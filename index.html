@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <title>Pixel Studio</title>
+    <link rel="icon" type="image/jpeg" href="./image/favicon.jpeg">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap');
+
+        :root {
+            --bg-color: #FFF0F5; 
+            --header-bg: #FFE4E8; 
+            --border-color: #FFD6E0; 
+            --text-main: #7A4B56; 
+            --accent: #FF9EBB; 
+            --accent-yellow: #FFDAB9; 
+            --cute-dark: #D87093; 
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: var(--bg-color); color: var(--text-main);
+            font-family: 'Nunito', sans-serif; -webkit-tap-highlight-color: transparent;
+            overflow: hidden; overscroll-behavior: none; touch-action: manipulation;
+        }
+
+        h1, h2, h3, .font-bold { font-family: 'Fredoka', sans-serif; }
+
+        body { position: fixed; inset: 0; }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #FFB6C1; border-radius: 4px; }
+
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%;
+            background: var(--accent); cursor: pointer; margin-top: -6px;
+            box-shadow: 0 2px 5px rgba(255, 182, 193, 0.5);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 6px; cursor: pointer; background: var(--border-color); border-radius: 3px;
+        }
+
+        .pixelated {
+            image-rendering: -moz-crisp-edges; image-rendering: -webkit-crisp-edges;
+            image-rendering: pixelated; image-rendering: crisp-edges;
+        }
+
+        .screen {
+            display: none; position: fixed; inset: 0; width: 100%; height: 100%;
+            flex-direction: column; background-color: var(--bg-color); z-index: 10; overflow: hidden;
+        }
+        .screen.active { display: flex !important; }
+
+        .toggle-checkbox:checked { transform: translateX(1.25rem); border-color: var(--cute-dark); }
+        .toggle-checkbox:checked + .toggle-label { background-color: var(--cute-dark); }
+        .toggle-checkbox { left: 0; top: 0; margin: 0; z-index: 1; border-color: #FFE4E8; transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1); }
+        .toggle-label { width: 2.5rem; height: 1.25rem; background-color: #FFD6E0; border-radius: 9999px; transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1); }
+
+        #edit-canvas { touch-action: none; }
+        #crop-area-container { position: relative; touch-action: none; user-select: none; max-width: 100%; max-height: 100%; }
+        #crop-image { display: block; max-width: 90vw; max-height: 65vh; pointer-events: none; border-radius: 0; }
+        #crop-overlay { position: absolute; inset: 0; background: rgba(60, 30, 40, 0.7); pointer-events: none; z-index: 1; border-radius: 0; }
+        #crop-box { position: absolute; border: 1px solid rgba(255, 158, 187, 0.8); z-index: 2; box-shadow: 0 0 20px rgba(0, 0, 0, 0.3); }
+        .crop-grid { position: absolute; inset: 0; border: 1px solid rgba(255, 158, 187, 0.3); display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; pointer-events: none; }
+        .crop-grid div { border: 1px solid rgba(255, 158, 187, 0.3); }
+
+        .crop-handle { position: absolute; width: 40px; height: 40px; background: transparent; z-index: 10; }
+        .crop-handle::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: transparent; }
+
+        .ch-tl::after { width: 16px; height: 16px; border-top: 3px solid white; border-left: 3px solid white; box-shadow: -1px -1px 2px rgba(0,0,0,0.3); }
+        .ch-tr::after { width: 16px; height: 16px; border-top: 3px solid white; border-right: 3px solid white; box-shadow: 1px -1px 2px rgba(0,0,0,0.3); }
+        .ch-bl::after { width: 16px; height: 16px; border-bottom: 3px solid white; border-left: 3px solid white; box-shadow: -1px 1px 2px rgba(0,0,0,0.3); }
+        .ch-br::after { width: 16px; height: 16px; border-bottom: 3px solid white; border-right: 3px solid white; box-shadow: 1px 1px 2px rgba(0,0,0,0.3); }
+        .ch-t::after { width: 24px; height: 3px; background: white; box-shadow: 0 -1px 2px rgba(0,0,0,0.3); }
+        .ch-b::after { width: 24px; height: 3px; background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+        .ch-l::after { width: 3px; height: 24px; background: white; box-shadow: -1px 0 2px rgba(0,0,0,0.3); }
+        .ch-r::after { width: 3px; height: 24px; background: white; box-shadow: 1px 0 2px rgba(0,0,0,0.3); }
+
+        .ch-tl { top: -20px; left: -20px; cursor: nwse-resize; } .ch-tr { top: -20px; right: -20px; cursor: nesw-resize; }
+        .ch-bl { bottom: -20px; left: -20px; cursor: nesw-resize; } .ch-br { bottom: -20px; right: -20px; cursor: nwse-resize; }
+        .ch-t { top: -20px; left: 50%; transform: translateX(-50%); cursor: ns-resize; } .ch-b { bottom: -20px; left: 50%; transform: translateX(-50%); cursor: ns-resize; }
+        .ch-l { top: 50%; left: -20px; transform: translateY(-50%); cursor: ew-resize; } .ch-r { top: 50%; right: -20px; transform: translateY(-50%); cursor: ew-resize; }
+
+        .tool-btn { border-radius: 50%; transition: all 0.2s; color: var(--text-main); }
+        .tool-btn.active { background-color: var(--accent); color: white; transform: scale(1.1); box-shadow: 0 4px 10px rgba(255, 158, 187, 0.4); }
+        .subtool-btn { color: var(--text-main); transition: all 0.2s; border-radius: 12px; }
+        .subtool-btn.active { color: var(--cute-dark); font-weight: bold; background: #FFF0F5; }
+        .subtool-btn.active .icon-box { background-color: var(--cute-dark); }
+
+        .transform-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; color: var(--text-main); gap: 4px; padding: 8px; width: 56px; text-align: center; border-radius: 16px; font-weight: 600; }
+        .transform-btn:active { background-color: var(--border-color); }
+
+        .action-popup-btn { display: flex; align-items: center; justify-content: center; background: #FFC0CB; color: var(--text-main); font-family: 'Fredoka', sans-serif; font-weight: 600; padding: 10px 20px; border-radius: 20px; font-size: 14px; box-shadow: 0 4px 10px rgba(255, 192, 203, 0.4); margin-bottom: 8px; }
+        .action-popup-icon { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: #FFC0CB; color: var(--text-main); border-radius: 50%; box-shadow: 0 4px 10px rgba(255, 192, 203, 0.4); margin-bottom: 8px; }
+
+        .heart-btn {
+            -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/%3E%3C/svg%3E");
+            -webkit-mask-size: 100% 100%;
+            -webkit-mask-repeat: no-repeat;
+            -webkit-mask-position: center;
+            mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/%3E%3C/svg%3E");
+            mask-size: 100% 100%;
+            mask-repeat: no-repeat;
+            mask-position: center;
+            border-radius: 0 !important;
+            border: none !important;
+        }
+
+        .glow-active {
+            filter: 
+                drop-shadow(1px 0px 0px #FF1493) 
+                drop-shadow(-1px 0px 0px #FF1493) 
+                drop-shadow(0px 1px 0px #FF1493) 
+                drop-shadow(0px -1px 0px #FF1493) 
+                drop-shadow(0px 0px 8px #FF69B4) !important;
+            transform: scale(1.25) !important;
+            z-index: 50;
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        #export-preview-canvas { max-width: 100%; height: auto !important; object-fit: contain; display: block; margin: 0 auto; border-radius: 0; }
+        canvas { image-rendering: -moz-crisp-edges; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; image-rendering: pixelated; max-width: 100%; }
+
+        button, input, select, textarea, label { touch-action: manipulation; }
+        button, input[type="button"], input[type="submit"] { min-width: 44px; min-height: 44px; outline: none; }
+        
+        .modal-card { background: #ffffff; border-radius: 28px; box-shadow: 0 20px 40px rgba(216, 112, 147, 0.2); border: 2px solid var(--header-bg); }
+        .modal-header { background: var(--header-bg); border-radius: 24px 24px 0 0; border-bottom: 2px dashed var(--border-color); }
+
+        @media (min-width: 768px) and (max-width: 1366px) { #crop-image { max-width: 88vw; max-height: 58vh; } }
+    </style>
+</head>
+<body class="text-base">
+    
+    <div id="splash-screen" style="position:fixed; inset:0; background:#FFF0F5; z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+        <h1 style="font-weight:700; font-size:32px; letter-spacing: 1px; margin-bottom:16px; color: #D87093;">Pixel Studio</h1>
+        <div style="width:50px; height:8px; background:#FF9EBB; border-radius:4px; animation: bouncePulse 1.2s infinite ease-in-out;"></div>
+    </div>
+
+    <style>
+    @keyframes bouncePulse {
+        0%, 100% { opacity: 0.6; transform: scale(0.8) translateY(0); }
+        50% { opacity: 1; transform: scale(1.2) translateY(-10px); }
+    }
+    </style>
+
+    <div id="menu-overlay" class="hidden absolute inset-0 bg-[#3C2026]/40 backdrop-blur-sm z-50 flex items-end transition-opacity">
+        <div class="w-full bg-[var(--bg-color)] flex flex-col transform rounded-t-3xl shadow-2xl max-h-[85vh] border-t-4 border-[var(--border-color)]">
+            <div class="h-16 flex items-center justify-center border-b-2 border-dashed border-[var(--border-color)] relative shrink-0">
+                <button id="btn-close-menu" class="absolute left-4 w-10 h-10 flex items-center justify-center text-[var(--cute-dark)] bg-white rounded-full shadow-sm"><i data-lucide="chevron-down" class="w-6 h-6"></i></button>
+                <span class="font-bold text-lg text-[var(--text-main)]">Create New ✨</span>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1 pb-8">
+                <label class="block w-full p-6 mb-4 text-center border-2 border-dashed border-[var(--cute-dark)] rounded-2xl active:bg-[var(--header-bg)] cursor-pointer text-base font-bold bg-white shadow-sm hover:shadow-md transition-all text-[var(--cute-dark)] focus:outline-none">
+                    <i data-lucide="image-plus" class="w-8 h-8 mx-auto mb-3"></i>
+                    Import an Image
+                    <input type="file" id="file-upload" accept="image/*" class="hidden">
+                </label>
+                
+                <div class="text-xs font-medium text-[var(--text-main)] bg-[var(--header-bg)] p-4 rounded-xl border border-[var(--border-color)] mb-6 text-left shadow-sm">
+                    <div class="font-bold text-[var(--cute-dark)] mb-2 flex items-center gap-1">
+                        <i data-lucide="lightbulb" class="w-4 h-4"></i> Import Tips:
+                    </div>
+                    <p class="mb-2">Note: Imported images should be pixel art, and make sure your image is clear (not blurry) and has simple 2D colors only. </p>
+                    <p class="mb-2">You can:</p>
+                    <ol class="list-decimal pl-4 space-y-1">
+                        <li>Use the cropping tool to ensure that all pixel grids in the image are complete.</li>
+                        <li>Adjust the sampling grid size to make sure each pixel in the original image corresponds closely to the sampling grid.</li>
+                        <li>After roughly aligning the grid, you can toggle the sampling dots to check if the position of each sampling point is correct.</li>
+                        <li>Click Generate Pixels to check it on canvas.</li>
+                    </ol>
+                </div>
+
+                <div class="text-sm font-bold text-[var(--text-main)] opacity-70 uppercase tracking-widest mb-4 px-2 text-center">Or start fresh</div>
+                <div class="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-6" id="canvas-preset-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="custom-canvas-modal" class="hidden fixed inset-0 bg-[#3C2026]/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+        <div class="modal-card w-full max-w-xs overflow-hidden flex flex-col">
+            <div class="modal-header h-14 flex items-center justify-center px-4 font-bold text-lg text-[var(--cute-dark)]">Custom Size 📏</div>
+            <div class="p-6 flex flex-col gap-5">
+                <div class="flex items-center gap-3">
+                    <input type="number" id="custom-w" placeholder="Width" class="w-1/2 border-2 border-[var(--border-color)] rounded-xl p-3 text-base outline-none text-center font-bold text-[var(--text-main)] focus:border-[var(--cute-dark)] bg-white" min="1" max="512" value="32">
+                    <span class="text-[var(--cute-dark)] font-bold text-xl">×</span>
+                    <input type="number" id="custom-h" placeholder="Height" class="w-1/2 border-2 border-[var(--border-color)] rounded-xl p-3 text-base outline-none text-center font-bold text-[var(--text-main)] focus:border-[var(--cute-dark)] bg-white" min="1" max="512" value="32">
+                </div>
+                <div class="flex justify-end gap-3 mt-2">
+                    <button id="btn-custom-cancel" class="flex-1 py-3 bg-[var(--header-bg)] text-[var(--text-main)] rounded-xl font-bold text-base shadow-sm">Cancel</button>
+                    <button id="btn-custom-create" class="flex-1 py-3 bg-[var(--cute-dark)] text-white rounded-xl font-bold text-base shadow-md shadow-pink-200">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="input-modal" class="hidden fixed inset-0 bg-[#3C2026]/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+        <div class="modal-card w-full max-w-xs overflow-hidden flex flex-col">
+            <div class="modal-header h-14 flex items-center justify-center px-4 font-bold text-lg text-[var(--cute-dark)]" id="input-modal-title">Edit</div>
+            <div class="p-6 flex flex-col gap-5">
+                <input type="text" id="input-modal-field" class="w-full border-2 border-[var(--border-color)] rounded-xl p-3 text-base outline-none focus:border-[var(--cute-dark)] bg-white text-[var(--text-main)] font-bold">
+                <div class="flex justify-end gap-3 mt-2">
+                    <button id="btn-input-cancel" class="flex-1 py-3 bg-[var(--header-bg)] text-[var(--text-main)] rounded-xl font-bold text-base shadow-sm">Cancel</button>
+                   
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirm-modal" class="hidden fixed inset-0 bg-[#3C2026]/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+        <div class="modal-card w-full max-w-xs overflow-hidden flex flex-col">
+            <div class="modal-header h-14 flex items-center justify-center px-4 font-bold text-lg text-[var(--cute-dark)]">Hold on, bestie! 🥺🎀</div>
+            <div class="p-6 flex flex-col gap-5 text-center">
+                <p id="confirm-modal-msg" class="text-[var(--text-main)] font-bold text-sm"></p>
+                <div class="flex justify-between gap-3 mt-2">
+                    <button id="btn-confirm-cancel" class="flex-1 py-3 bg-[var(--header-bg)] text-[var(--text-main)] rounded-xl font-bold text-sm shadow-sm hover:scale-105 transition-transform">Keep it! 💖</button>
+                    <button id="btn-confirm-ok" class="flex-1 py-3 bg-red-400 text-white rounded-xl font-bold text-sm shadow-md shadow-pink-200 hover:scale-105 transition-transform">Bye bye! 🗑️</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-crop" class="screen bg-[#2A1A1E] text-white">
+        <div class="h-16 flex items-center justify-center px-4 z-30 bg-[#1D1014] shrink-0 border-b border-[#3C2026]">
+            <span class="font-bold font-sans tracking-wide text-[#FFB6C1] text-lg">Crop Image</span>
+        </div>
+        
+        <div class="flex-1 relative flex items-center justify-center overflow-hidden touch-none" id="crop-workspace">
+            <div id="crop-area-container">
+                <img id="crop-image" src="" alt="Crop target"><div id="crop-overlay"></div>
+                <div id="crop-box">
+                    <div class="crop-grid"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+                    <div class="crop-handle ch-tl" data-handle="tl"></div><div class="crop-handle ch-tr" data-handle="tr"></div>
+                    <div class="crop-handle ch-bl" data-handle="bl"></div><div class="crop-handle ch-br" data-handle="br"></div>
+                    <div class="crop-handle ch-t" data-handle="t"></div><div class="crop-handle ch-b" data-handle="b"></div>
+                    <div class="crop-handle ch-l" data-handle="l"></div><div class="crop-handle ch-r" data-handle="r"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="h-32 shrink-0 bg-[#1D1014] flex flex-col justify-center px-4 z-20 pb-6 border-t border-[#3C2026]">
+            <div class="flex justify-between items-center w-full max-w-md mx-auto pt-2 pb-2">
+                
+            </div>
+            
+            <div class="flex justify-center items-center gap-6 mt-3">
+                <button id="btn-crop-cancel" class="w-12 h-12 flex items-center justify-center bg-[#3C2026] rounded-full text-white hover:bg-[#4d2a32] transition-colors shadow-md"><i data-lucide="x" class="w-6 h-6"></i></button>
+                <button id="btn-crop-done" class="text-base bg-[#FFB6C1] text-[#2A1A1E] px-8 py-3 rounded-full font-bold shadow-lg hover:scale-105 transition-transform flex-1 max-w-[200px]">Confirm Crop</button>
+                <button id="btn-crop-reset" class="w-12 h-12 flex items-center justify-center text-[#FFB6C1] bg-[#3C2026] rounded-full hover:bg-[#4d2a32] transition-colors shadow-md"><i data-lucide="rotate-ccw" class="w-6 h-6"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-grid" class="screen">
+        <div class="h-16 flex items-center px-4 bg-[var(--header-bg)] border-b-2 border-[var(--border-color)] shrink-0 relative z-30">
+            <span class="font-bold text-lg text-[var(--cute-dark)] w-full text-center pointer-events-none">Grid Size</span>
+        </div>
+        
+        <div class="flex-1 overflow-auto bg-[var(--bg-color)] text-center relative" id="grid-workspace" style="white-space: nowrap;">
+            <span class="inline-block h-full align-middle"></span>
+            <div class="relative shadow-lg shadow-pink-200 border-[3px] border-white bg-white p-1 inline-block align-middle text-left rounded-none mt-4 mb-4" id="grid-canvas-container">
+                <canvas id="grid-image-canvas" class="block object-contain rounded-none"></canvas>
+                <canvas id="grid-overlay-canvas" class="absolute top-1 left-1 pointer-events-none rounded-none"></canvas>
+            </div>
+        </div>
+        
+        <div class="bg-white p-6 flex flex-col gap-4 border-t-2 border-[var(--border-color)] shrink-0 pb-[env(safe-area-inset-bottom,1.5rem)] rounded-t-3xl shadow-[0_-10px_20px_rgba(255,182,193,0.15)] z-20">
+            <div class="flex justify-between items-center text-sm w-full">
+                <div class="flex flex-wrap items-center gap-2">
+                    <label class="flex items-center gap-1.5 text-[var(--cute-dark)] font-bold cursor-pointer bg-[var(--bg-color)] px-3 py-2 rounded-xl border border-[var(--border-color)] shadow-sm text-xs sm:text-sm">
+                        <input type="checkbox" id="toggle-sampling-grid" checked class="accent-[var(--cute-dark)] w-4 h-4"> Grid
+                    </label>
+                    <label class="flex items-center gap-1.5 text-[var(--cute-dark)] font-bold cursor-pointer bg-[var(--bg-color)] px-3 py-2 rounded-xl border border-[var(--border-color)] shadow-sm text-xs sm:text-sm">
+                        <input type="checkbox" id="toggle-sampling-dots" class="accent-[var(--cute-dark)] w-4 h-4"> Dots
+                    </label>
+                </div>
+                <div class="text-center font-mono font-bold text-[var(--text-main)] bg-[var(--header-bg)] px-3 py-2 rounded-xl shadow-sm" id="grid-size-display">20 × 20</div>
+            </div>
+            
+            <div class="bg-[var(--bg-color)] p-4 rounded-2xl border border-[var(--border-color)] flex flex-col justify-center items-center">
+                <div class="flex items-center justify-center gap-3 w-full">
+                    <span class="w-14 text-sm font-bold text-[var(--cute-dark)]">Width</span>
+                    <span class="w-10 text-sm text-center font-mono font-bold bg-white rounded-lg py-1 shadow-sm" id="val-w">20</span>
+                    <button id="btn-minus-w" class="p-2 bg-white rounded-full shadow-sm text-[var(--cute-dark)] hover:bg-[var(--header-bg)] flex items-center justify-center w-10 h-10 shrink-0"><i data-lucide="minus" class="w-5 h-5"></i></button>
+                    <input type="range" id="slider-w" min="5" max="128" value="20" class="flex-1">
+                    <button id="btn-plus-w" class="p-2 bg-white rounded-full shadow-sm text-[var(--cute-dark)] hover:bg-[var(--header-bg)] flex items-center justify-center w-10 h-10 shrink-0"><i data-lucide="plus" class="w-5 h-5"></i></button>
+                </div>
+                <div class="flex items-center gap-3 mt-3 opacity-60 w-full">
+                    <span class="w-14 text-sm font-bold text-[var(--cute-dark)]">Height</span>
+                    <span class="w-10 text-sm text-center font-mono font-bold bg-white rounded-lg py-1" id="val-h">20</span>
+                    <div class="flex-1 text-xs pl-2 italic font-medium">Auto-calculated 🎀</div>
+                </div>
+
+                <button id="btn-toggle-offset" class="text-xs font-bold text-[var(--cute-dark)] mt-4 flex items-center justify-center w-full bg-white py-2 rounded-xl shadow-sm border border-[var(--border-color)]">
+                    Sampling Offset <i data-lucide="chevron-down" class="w-4 h-4 ml-1"></i>
+                </button>
+                <div id="offset-menu" class="hidden w-full flex flex-col gap-3 mt-3 pt-3 border-t border-[var(--border-color)]">
+                    <div class="flex items-center text-xs font-bold text-[var(--cute-dark)]">
+                        <span class="w-8">X</span>
+                        <input type="range" id="slider-offset-x" min="-50" max="50" value="0" class="flex-1 mx-2">
+                        <span class="w-8 text-right font-mono" id="val-offset-x">0</span>
+                    </div>
+                    <div class="flex items-center text-xs font-bold text-[var(--cute-dark)]">
+                        <span class="w-8">Y</span>
+                        <input type="range" id="slider-offset-y" min="-50" max="50" value="0" class="flex-1 mx-2">
+                        <span class="w-8 text-right font-mono" id="val-offset-y">0</span>
+                    </div>
+                </div>
+
+            </div>
+            
+            <button id="btn-preview" class="w-full bg-[var(--cute-dark)] text-white font-bold text-lg py-4 rounded-2xl shadow-lg shadow-pink-200 mb-2 hover:scale-105 transition-transform">Generate Pixels</button>
+        </div>
+    </div>
+
+    <div id="screen-edit" class="screen">
+        <div class="flex items-center px-4 bg-white z-20 relative shadow-sm border-b-2 border-[var(--border-color)] rounded-b-3xl shrink-0" style="padding-top: max(env(safe-area-inset-top), 0.5rem); min-height: 4.5rem; padding-bottom: 0.5rem;">
+            
+            <button id="btn-open-menu" class="w-10 h-10 flex items-center justify-center bg-[var(--bg-color)] rounded-full text-[var(--cute-dark)] shrink-0 shadow-inner absolute left-4 z-10 transition-all"><i data-lucide="sparkles" class="w-5 h-5"></i></button>
+            
+            <div class="flex flex-col items-center justify-center gap-1 w-full pointer-events-none">
+                <div class="flex gap-2 items-center bg-[var(--bg-color)] p-1.5 rounded-full border border-[var(--border-color)] pointer-events-auto pl-2 pr-2">
+                    <button id="btn-color-1" class="heart-btn w-7 h-7 flex items-center justify-center text-center text-[9px] font-bold pt-1 transition-transform"></button>
+                    <button id="btn-color-2" class="heart-btn w-7 h-7 flex items-center justify-center text-center text-[9px] font-bold pt-1 transition-transform"></button>
+                    <button id="btn-color-3" class="heart-btn w-7 h-7 flex items-center justify-center text-center text-[9px] font-bold pt-1 transition-transform"></button>
+                </div>
+                <span id="active-color-count" class="text-[10px] font-bold text-[var(--cute-dark)] bg-white px-2 py-0.5 rounded-full border border-[var(--border-color)] shadow-sm">Used: 0px</span>
+            </div>
+            
+            <div class="flex gap-1.5 shrink-0 absolute right-4">
+                <button id="btn-edit-undo" class="w-9 h-9 flex items-center justify-center bg-[var(--bg-color)] rounded-full text-[var(--text-main)] shadow-inner" style="opacity: 0.4;"><i data-lucide="undo-2" class="w-4 h-4"></i></button>
+                <button id="btn-edit-redo" class="w-9 h-9 flex items-center justify-center bg-[var(--bg-color)] rounded-full text-[var(--text-main)] shadow-inner" style="opacity: 0.4;"><i data-lucide="redo-2" class="w-4 h-4"></i></button>
+            </div>
+        </div>
+
+        <div class="flex-1 relative bg-[var(--bg-color)] flex flex-col overflow-hidden">
+            <div id="edit-workspace" class="flex-1 overflow-auto bg-[var(--bg-color)] text-center relative" style="white-space: nowrap;">
+                <span class="inline-block h-full align-middle"></span>
+
+                <div id="edit-welcome-msg" class="inline-block align-middle p-6 whitespace-normal max-w-sm w-[90%] text-center bg-white rounded-3xl shadow-xl shadow-pink-200 border-2 border-[var(--border-color)]">
+                    <div class="w-20 h-20 bg-[var(--header-bg)] rounded-full flex items-center justify-center mb-6 shadow-inner mx-auto">
+                        <i data-lucide="palette" class="w-10 h-10 text-[var(--cute-dark)]"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-[var(--cute-dark)] mb-2">Welcome to PixelStudio! 🎀</h2>
+                    <p class="text-[var(--text-main)] mb-8 text-sm">Create new canvas or import image to start editing.</p>
+                </div>
+
+                <div id="edit-scroll-content" class="hidden inline-block align-middle p-6 box-content text-left relative m-6">
+                    <div id="canvas-wrapper" class="relative shadow-2xl bg-white border border-[var(--border-color)] inline-block p-0 rounded-none">
+                        <div class="relative overflow-hidden w-full h-full rounded-none" id="canvas-inner-wrapper">
+                            <div class="absolute inset-0" id="checkerboard-bg" style="background-image: repeating-linear-gradient(45deg, #FFE4E8 25%, transparent 25%, transparent 75%, #FFE4E8 75%, #FFE4E8), repeating-linear-gradient(45deg, #FFE4E8 25%, #FFF 25%, #FFF 75%, #FFE4E8 75%, #FFE4E8); background-position: 0 0, 10px 10px; background-size: 20px 20px;"></div>
+                            <canvas id="edit-canvas" class="pixelated cursor-crosshair block absolute top-0 left-0 z-10 rounded-none"></canvas>
+                            <canvas id="edit-grid-canvas" class="absolute top-0 left-0 pointer-events-none block z-20 rounded-none"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="toolbar-draw" class="hidden absolute bottom-[85px] left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur rounded-full px-2 py-1.5 flex gap-2 text-xs items-center shadow-[0_5px_20px_rgba(255,182,193,0.3)] border border-[var(--border-color)] z-20">
+             <button class="flex flex-col items-center justify-center h-10 w-10 subtool-btn active" data-sub="1x1">
+                 <div class="w-2.5 h-2.5 bg-current mb-1 rounded-sm icon-box"></div> 
+                 <span class="text-[10px] font-bold leading-none">1px</span>
+             </button>
+             <button class="flex flex-col items-center justify-center h-10 w-10 subtool-btn" data-sub="2x2">
+                 <div class="w-3.5 h-3.5 bg-current mb-1 rounded-sm icon-box"></div> 
+                 <span class="text-[10px] font-bold leading-none">2px</span>
+             </button>
+             <button class="flex flex-col items-center justify-center h-10 w-10 subtool-btn" data-sub="3x3">
+                 <div class="w-[18px] h-[18px] bg-current mb-1 rounded-sm icon-box"></div> 
+                 <span class="text-[10px] font-bold leading-none">3px</span>
+             </button>
+             <div class="w-px h-6 bg-[var(--border-color)] mx-1"></div>
+             <button class="flex flex-col items-center justify-center h-10 w-10 subtool-btn text-[var(--cute-dark)]" data-sub="bucket">
+                 <i data-lucide="paint-bucket" class="w-4 h-4 mb-1 stroke-2"></i> 
+                 <span class="text-[10px] font-bold leading-none">Fill</span>
+             </button>
+        </div>
+
+        <div id="toolbar-transform" class="hidden absolute bottom-[85px] left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur rounded-full px-2 py-1.5 flex gap-1 items-center shadow-[0_5px_20px_rgba(255,182,193,0.3)] border border-[var(--border-color)] z-20">
+             <button class="transform-btn w-12" id="btn-tf-fliph"><i data-lucide="flip-horizontal" class="w-5 h-5 mb-1"></i><span class="text-[9px]">Flip H</span></button>
+             <button class="transform-btn w-12" id="btn-tf-flipv"><i data-lucide="flip-vertical" class="w-5 h-5 mb-1"></i><span class="text-[9px]">Flip V</span></button>
+             <div class="w-px h-6 bg-[var(--border-color)] mx-1"></div>
+             <button class="transform-btn text-red-400 w-12" id="btn-tf-cancel"><i data-lucide="x" class="w-5 h-5 mb-1 stroke-2"></i><span class="text-[9px]">Close</span></button>
+        </div>
+
+        <div class="h-[70px] shrink-0 flex items-center justify-between px-2 bg-white border-t-2 border-[var(--border-color)] z-30 relative pb-[env(safe-area-inset-bottom)] rounded-t-3xl shadow-[0_-5px_20px_rgba(255,182,193,0.1)]">
+             <button id="btn-more-menu" class="w-10 h-10 flex items-center justify-center bg-[var(--bg-color)] rounded-full text-[var(--cute-dark)] shrink-0 ml-1"><i data-lucide="settings-2" class="w-5 h-5"></i></button>
+             
+             <div class="flex items-center justify-center gap-1 sm:gap-2 bg-[var(--bg-color)] p-1.5 rounded-full border border-[var(--border-color)] mx-1 sm:mx-2 flex-1 max-w-[280px]">
+                 <button class="tool-btn active w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-white shadow-sm" data-tool="pen"><i data-lucide="pen-tool" class="w-4 h-4"></i></button>
+                 <button class="tool-btn w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-white shadow-sm" data-tool="eraser"><i data-lucide="eraser" class="w-4 h-4"></i></button>
+                 <button class="tool-btn w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-white shadow-sm" data-tool="eyedropper"><i data-lucide="pipette" class="w-4 h-4"></i></button>
+                 <button class="tool-btn w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-white shadow-sm rounded-full" id="btn-colors">
+                     <i data-lucide="palette" class="w-4 h-4"></i>
+                 </button>
+                 <button class="tool-btn w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-white shadow-sm" data-tool="transform"><i data-lucide="move" class="w-4 h-4"></i></button>
+             </div>
+             
+             <button id="btn-action-trigger" class="w-10 h-10 sm:w-12 sm:h-12 bg-[var(--cute-dark)] text-white rounded-full flex items-center justify-center shadow-lg shadow-pink-300 hover:scale-105 transition-transform shrink-0 mr-1"><i data-lucide="arrow-right" class="w-5 h-5 stroke-[2.5]"></i></button>
+
+             <div id="action-menu" class="hidden absolute bottom-[80px] right-2 flex flex-col items-end gap-3 z-50">
+                <div class="flex items-center gap-3">
+                    <button class="action-popup-btn text-xs py-2 px-4" id="btn-go-export">Export Image</button>
+                    <button class="action-popup-icon w-10 h-10" id="btn-go-share"><i data-lucide="download" class="w-4 h-4 stroke-2"></i></button>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button class="action-popup-btn bg-[var(--accent)] text-white text-xs py-2 px-4" id="btn-go-workstation">Work Station</button>
+                    <button class="action-popup-icon w-10 h-10 bg-[var(--accent)] text-white" id="btn-go-ws-icon"><i data-lucide="grid" class="w-4 h-4 stroke-2"></i></button>
+                </div>
+             </div>
+        </div>
+
+        <div id="more-menu" class="hidden absolute bottom-[80px] left-2 bg-white shadow-[0_15px_40px_rgba(216,112,147,0.2)] border-2 border-[var(--border-color)] rounded-2xl py-2 w-[240px] z-50 text-sm font-bold text-[var(--text-main)]">
+            <div class="px-4 py-3 flex justify-between items-center border-b border-[var(--bg-color)] hover:bg-[var(--bg-color)] rounded-t-xl transition-colors">
+                <span>Transparent Bg</span>
+                <div class="relative inline-block w-10 align-middle select-none"><input type="checkbox" id="toggle-transparent" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer"/><label for="toggle-transparent" class="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer"></label></div>
+            </div>
+            <div class="px-4 py-3 flex justify-between items-center border-b border-[var(--bg-color)] hover:bg-[var(--bg-color)] transition-colors">
+                <span>Show Grid Lines</span>
+                <div class="relative inline-block w-10 align-middle select-none"><input type="checkbox" id="toggle-grid" checked class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer"/><label for="toggle-grid" class="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer"></label></div>
+            </div>
+            <button class="w-full text-left px-4 py-3 hover:bg-[var(--bg-color)] font-bold transition-colors flex items-center gap-2" id="btn-clear-canvas">
+                <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Clear Canvas
+            </button>
+            <button class="w-full text-left px-4 py-3 hover:bg-red-50 text-red-500 font-bold rounded-b-xl transition-colors flex items-center gap-2" id="btn-delete-canvas">
+                <i data-lucide="trash-2" class="w-4 h-4"></i> Delete Canvas
+            </button>
+        </div>
+
+        <div id="color-picker-popup" class="hidden absolute bottom-[80px] left-1/2 transform -translate-x-1/2 bg-white shadow-[0_15px_40px_rgba(216,112,147,0.3)] border-2 border-[var(--border-color)] p-4 rounded-3xl z-50 w-[90vw] max-w-[320px]">
+            <div class="text-sm font-bold text-[var(--cute-dark)] mb-3 border-b-2 border-dashed border-[var(--border-color)] pb-2 flex items-center gap-2">
+                <i data-lucide="palette" class="w-4 h-4"></i> Choose Color
+            </div>
+            <div class="flex flex-wrap gap-1.5 max-h-[220px] overflow-y-auto p-1 justify-center scroll-smooth" id="palette-swatches"></div>
+        </div>
+    </div>
+
+    <div id="screen-workstation" class="screen bg-[var(--bg-color)]">
+        <div class="h-16 flex items-center px-4 bg-[var(--header-bg)] border-b-2 border-[var(--border-color)] shrink-0 relative shadow-sm">
+            <button class="nav-back w-10 h-10 flex items-center justify-center bg-white rounded-full text-[var(--cute-dark)] shadow-sm absolute left-4 hover:scale-105 transition-transform"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
+            <div class="w-full flex justify-center pointer-events-none">
+                <div class="flex bg-white rounded-full p-1 shadow-sm border border-[var(--border-color)] pointer-events-auto">
+                    <button id="ws-mode-code" class="text-[10px] sm:text-xs font-bold px-3 py-1.5 rounded-full bg-[var(--cute-dark)] text-white shadow-md transition-all">Codes</button>
+                    <button id="ws-mode-color" class="text-[10px] sm:text-xs font-bold px-3 py-1.5 rounded-full text-[var(--text-main)] hover:bg-[var(--bg-color)] transition-all">Colors</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <div class="flex-1 overflow-auto bg-[var(--bg-color)] text-center" id="workstation-scroll" style="white-space: nowrap;">
+                <span class="inline-block h-full align-middle"></span>
+                <div id="ws-scroll-content" class="inline-block align-middle box-content text-left relative m-6 bg-white p-3 rounded-2xl shadow-xl border border-[var(--border-color)]">
+                    <canvas id="ws-canvas" class="bg-white rounded-lg"></canvas>
+                </div>
+            </div>
+            <div class="w-full flex-shrink-0 bg-white border-t-2 border-[var(--border-color)] flex flex-col pb-[env(safe-area-inset-bottom)] rounded-t-3xl shadow-[0_-10px_20px_rgba(255,182,193,0.1)] z-20">
+                <div class="border-b-2 border-dashed border-[var(--border-color)] bg-[var(--bg-color)] flex flex-row items-center justify-between p-2 gap-2 text-[var(--cute-dark)] rounded-t-3xl">
+                    <div class="flex flex-col gap-1 items-center flex-1">
+                        <div class="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider">
+                            <i data-lucide="grid-3x3" class="w-3 h-3"></i> Grid Size
+                        </div>
+                        <div class="flex items-center border-2 border-white bg-white rounded-lg overflow-hidden h-8 shadow-sm">
+                            <button id="ws-grid-minus" class="w-8 h-full flex items-center justify-center bg-[var(--bg-color)] hover:bg-[var(--header-bg)] transition-colors"><i data-lucide="minus" class="w-3 h-3"></i></button>
+                            <span id="ws-grid-display" class="font-mono text-xs px-2 py-1 font-bold flex items-center justify-center min-w-[40px] h-full text-[var(--text-main)]">5px</span>
+                            <button id="ws-grid-plus" class="w-8 h-full flex items-center justify-center bg-[var(--bg-color)] hover:bg-[var(--header-bg)] transition-colors"><i data-lucide="plus" class="w-3 h-3"></i></button>
+                        </div>
+                    </div>
+                    
+                    <div class="w-1 h-8 bg-white rounded-full"></div>
+                    
+                    <div class="flex flex-col gap-1 items-center flex-1">
+                        <div class="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider">
+                            <i data-lucide="zoom-in" class="w-3 h-3"></i> Zoom
+                        </div>
+                        <div class="flex items-center border-2 border-white bg-white rounded-lg overflow-hidden h-8 shadow-sm">
+                            <button id="ws-zoom-minus" class="w-8 h-full flex items-center justify-center bg-[var(--bg-color)] hover:bg-[var(--header-bg)] transition-colors"><i data-lucide="minus" class="w-3 h-3"></i></button>
+                            <span id="ws-zoom-display" class="font-mono text-xs px-2 py-1 font-bold flex items-center justify-center min-w-[40px] h-full text-[var(--text-main)]">1.0x</span>
+                            <button id="ws-zoom-plus" class="w-8 h-full flex items-center justify-center bg-[var(--bg-color)] hover:bg-[var(--header-bg)] transition-colors"><i data-lucide="plus" class="w-3 h-3"></i></button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="ws-legend" class="bg-white h-24"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-export" class="screen bg-[var(--bg-color)] h-[100dvh]">
+        <div class="h-16 flex items-center px-4 bg-[var(--header-bg)] border-b-2 border-[var(--border-color)] shrink-0 relative">
+            <button class="nav-back w-10 h-10 flex items-center justify-center bg-white rounded-full text-[var(--cute-dark)] shadow-sm absolute left-4 hover:scale-105 transition-transform"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
+            <span class="font-bold text-lg text-[var(--cute-dark)] w-full text-center pointer-events-none">Export</span>
+        </div>
+
+        <div class="flex-1 overflow-y-auto w-full">
+            <div class="p-4 sm:p-6 flex justify-center min-h-[30vh] items-center">
+                <div class="p-2 sm:p-3 bg-white border border-[var(--border-color)] rounded-2xl shadow-xl shadow-pink-200">
+                    <canvas id="export-preview-canvas" class="max-w-full rounded-none"></canvas>
+                </div>
+            </div>
+            
+            <div class="px-4 sm:px-6 py-4 flex flex-col gap-4 text-sm sm:text-base font-bold max-w-lg mx-auto w-full pb-8">
+                <div class="bg-white p-4 sm:p-5 rounded-3xl shadow-sm border border-[var(--border-color)] flex flex-col gap-4 sm:gap-5">
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="text-[var(--cute-dark)] flex items-center gap-2"><i data-lucide="shapes" class="w-4 h-4 sm:w-5 sm:h-5"></i> Pixel Shape</span>
+                        <div class="flex border-2 border-[var(--border-color)] rounded-full overflow-hidden text-xs bg-[var(--bg-color)] shadow-inner p-1" id="shape-toggles">
+                            <button class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full active-shape bg-white shadow-sm" data-shape="square"><div class="w-3 h-3 sm:w-4 sm:h-4 bg-[var(--cute-dark)] rounded-sm mx-auto"></div></button>
+                            <button class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full" data-shape="circle"><div class="w-3 h-3 sm:w-4 sm:h-4 bg-white border-[3px] border-[var(--cute-dark)] rounded-full mx-auto"></div></button>
+                            <button class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[var(--cute-dark)]" data-shape="cross"><i data-lucide="x" class="w-4 h-4 sm:w-5 sm:h-5 mx-auto stroke-[3]"></i></button>
+                        </div>
+                    </div>
+                    
+                    <div class="w-full h-px bg-gradient-to-r from-transparent via-[var(--border-color)] to-transparent"></div>
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="text-[var(--cute-dark)] flex items-center gap-2"><i data-lucide="grid-2x2" class="w-4 h-4 sm:w-5 sm:h-5"></i> Show Grid Lines</span>
+                        <div class="relative inline-block w-10 sm:w-12 align-middle select-none"><input type="checkbox" id="exp-grid" checked class="toggle-checkbox absolute block w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white border-[4px] sm:border-[5px] appearance-none cursor-pointer"/><label for="exp-grid" class="toggle-label block overflow-hidden h-5 w-10 sm:h-6 sm:w-12 rounded-full bg-[#FFD6E0] cursor-pointer"></label></div>
+                    </div>
+                    
+                    <div class="w-full h-px bg-gradient-to-r from-transparent via-[var(--border-color)] to-transparent"></div>
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="text-[var(--cute-dark)] flex items-center gap-2"><i data-lucide="list-tree" class="w-4 h-4 sm:w-5 sm:h-5"></i> Show Color Codes</span>
+                        <div class="relative inline-block w-10 sm:w-12 align-middle select-none"><input type="checkbox" id="exp-analysis" class="toggle-checkbox absolute block w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white border-[4px] sm:border-[5px] appearance-none cursor-pointer"/><label for="exp-analysis" class="toggle-label block overflow-hidden h-5 w-10 sm:h-6 sm:w-12 rounded-full bg-[#FFD6E0] cursor-pointer"></label></div>
+                    </div>
+                    
+                    <div class="w-full h-px bg-gradient-to-r from-transparent via-[var(--border-color)] to-transparent"></div>
+
+                    <div class="flex justify-between items-center">
+                        <span class="text-[var(--cute-dark)] flex items-center gap-2"><i data-lucide="type" class="w-4 h-4 sm:w-5 sm:h-5"></i> Add Watermark</span>
+                        <div class="relative inline-block w-10 sm:w-12 align-middle select-none"><input type="checkbox" id="exp-watermark" class="toggle-checkbox absolute block w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white border-[4px] sm:border-[5px] appearance-none cursor-pointer"/><label for="exp-watermark" class="toggle-label block overflow-hidden h-5 w-10 sm:h-6 sm:w-12 rounded-full bg-[#FFD6E0] cursor-pointer"></label></div>
+                    </div>
+                    <input type="text" id="watermark-text" placeholder="Type your cute watermark..." class="hidden w-full p-2.5 sm:p-3 border-2 border-[var(--border-color)] bg-[var(--bg-color)] rounded-xl outline-none font-bold text-xs sm:text-sm text-[var(--text-main)] text-center focus:border-[var(--cute-dark)] focus:bg-white transition-colors">
+                
+                </div>
+            </div>
+        </div>
+
+        <div class="shrink-0 bg-white p-4 sm:p-5 pb-[calc(env(safe-area-inset-bottom,1rem)+1rem)] border-t-2 border-[var(--border-color)] flex flex-col gap-2 relative z-50 rounded-t-3xl shadow-[0_-10px_20px_rgba(255,182,193,0.15)]">
+             <button id="btn-export-download" class="w-full bg-[var(--cute-dark)] rounded-full py-3 sm:py-4 text-base sm:text-lg font-bold text-white shadow-lg shadow-pink-300 flex items-center justify-center gap-2 sm:gap-3 active:scale-95 transition-transform"><i data-lucide="download-cloud" class="w-5 h-5 sm:w-6 sm:h-6 stroke-2"></i> Download to Gallery</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.tailwindcss.com"></script> 
+    <script src="https://unpkg.com/lucide@latest"></script> 
+    <script>
+    lucide.createIcons();
+    
+        const $ = id => document.getElementById(id);
+        const $$ = q => document.querySelectorAll(q);
+
+        const APP_PALETTE = [
+            { code: "A1", name: "Color A1", hex: "#FFF2CA" }, { code: "A2", name: "Color A2", hex: "#FFF9D3" }, { code: "A3", name: "Color A3", hex: "#FFEB8C" }, { code: "A4", name: "Color A4", hex: "#FFD23C" }, { code: "A5", name: "Color A5", hex: "#F9CA34" }, { code: "A6", name: "Color A6", hex: "#FFAF4B" }, { code: "A7", name: "Color A7", hex: "#FF7828" }, { code: "A8", name: "Color A8", hex: "#DDB42D" }, { code: "A9", name: "Color A9", hex: "#F8986D" }, { code: "A10", name: "Color A10", hex: "#FF863E" },
+            { code: "B1", name: "Color B1", hex: "#E3EC2A" }, { code: "B2", name: "Color B2", hex: "#77DC45" }, { code: "B3", name: "Color B3", hex: "#A6F5A1" }, { code: "B4", name: "Color B4", hex: "#71E341" }, { code: "B5", name: "Color B5", hex: "#46CA52" }, { code: "B6", name: "Color B6", hex: "#7EDCBC" }, { code: "B7", name: "Color B7", hex: "#068C79" }, { code: "B8", name: "Color B8", hex: "#01803D" }, { code: "B9", name: "Color B9", hex: "#063C1E" }, { code: "B10", name: "Color B10", hex: "#A7E7D8" },
+            { code: "C1", name: "Color C1", hex: "#E9FCF0" }, { code: "C2", name: "Color C2", hex: "#B8EAE3" }, { code: "C3", name: "Color C3", hex: "#C5E8F9" }, { code: "C4", name: "Color C4", hex: "#83CFF0" }, { code: "C5", name: "Color C5", hex: "#12A6DC" }, { code: "C6", name: "Color C6", hex: "#59A8EC" }, { code: "C7", name: "Color C7", hex: "#377AC3" }, { code: "C8", name: "Color C8", hex: "#0066CC" }, { code: "C9", name: "Color C9", hex: "#234AC0" }, { code: "C10", name: "Color C10", hex: "#3BBFD6" },
+            { code: "D1", name: "Color D1", hex: "#A9BBF6" }, { code: "D2", name: "Color D2", hex: "#8C9CD0" }, { code: "D3", name: "Color D3", hex: "#133EA2" }, { code: "D4", name: "Color D4", hex: "#213F7F" }, { code: "D5", name: "Color D5", hex: "#C554B8" }, { code: "D6", name: "Color D6", hex: "#BF95F6" }, { code: "D7", name: "Color D7", hex: "#7C50B1" }, { code: "D8", name: "Color D8", hex: "#E9E0FF" }, { code: "D9", name: "Color D9", hex: "#D8C5EE" }, { code: "D10", name: "Color D10", hex: "#2A1350" },
+            { code: "E1", name: "Color E1", hex: "#FED7D2" }, { code: "E2", name: "Color E2", hex: "#FFD9EB" }, { code: "E3", name: "Color E3", hex: "#FC9BCB" }, { code: "E4", name: "Color E4", hex: "#F077AC" }, { code: "E5", name: "Color E5", hex: "#ED548B" }, { code: "E6", name: "Color E6", hex: "#FF3377" }, { code: "E7", name: "Color E7", hex: "#AD156D" }, { code: "E8", name: "Color E8", hex: "#FFDEDE" }, { code: "E9", name: "Color E9", hex: "#FF8BDA" }, { code: "E10", name: "Color E10", hex: "#B73B74" },
+            { code: "F1", name: "Color F1", hex: "#FF9685" }, { code: "F2", name: "Color F2", hex: "#FF5F58" }, { code: "F3", name: "Color F3", hex: "#FF4E53" }, { code: "F4", name: "Color F4", hex: "#E02A25" }, { code: "F5", name: "Color F5", hex: "#CD3338" }, { code: "F6", name: "Color F6", hex: "#982F26" }, { code: "F7", name: "Color F7", hex: "#861736" }, { code: "F8", name: "Color F8", hex: "#B1082D" }, { code: "F9", name: "Color F9", hex: "#E66F83" }, { code: "F10", name: "Color F10", hex: "#984E30" },
+            { code: "G1", name: "Color G1", hex: "#FFE3C8" }, { code: "G2", name: "Color G2", hex: "#FFD4B6" }, { code: "G3", name: "Color G3", hex: "#F8D2BE" }, { code: "G4", name: "Color G4", hex: "#E3C2A2" }, { code: "G5", name: "Color G5", hex: "#F9AE59" }, { code: "G6", name: "Color G6", hex: "#FD9B40" }, { code: "G7", name: "Color G7", hex: "#8D583B" }, { code: "G8", name: "Color G8", hex: "#492B1E" }, { code: "G9", name: "Color G9", hex: "#ECBD80" }, { code: "G10", name: "Color G10", hex: "#CF8C30" },
+            { code: "H1", name: "Color H1", hex: "#F6F4F5" }, { code: "H2", name: "Color H2", hex: "#FFFFFF" }, { code: "H3", name: "Color H3", hex: "#BCBCBC" }, { code: "H4", name: "Color H4", hex: "#979096" }, { code: "H5", name: "Color H5", hex: "#635F67" }, { code: "H6", name: "Color H6", hex: "#3B373F" }, { code: "H7", name: "Color H7", hex: "#000000" }, { code: "H8", name: "Color H8", hex: "#F8E7E7" }, { code: "H9", name: "Color H9", hex: "#E8E4D8" }, { code: "H10", name: "Color H10", hex: "#EBE8F1" },
+            { code: "M1", name: "Color M1", hex: "#BCC5BA" }, { code: "M2", name: "Color M2", hex: "#92B298" }, { code: "M3", name: "Color M3", hex: "#748A94" }, { code: "M4", name: "Color M4", hex: "#F2E6DB" }, { code: "M5", name: "Color M5", hex: "#DFD6B8" }, { code: "M6", name: "Color M6", hex: "#D1C298" }, { code: "M7", name: "Color M7", hex: "#BFABA6" }, { code: "M8", name: "Color M8", hex: "#B3969A" }, { code: "M9", name: "Color M9", hex: "#B7967D" }, { code: "M10", name: "Color M10", hex: "#C5AFCB" }
+        ];
+
+        const state = {
+            projects: [], currentId: null, imgSource: null,
+            croppedCanvas: null, cropRect: { x:0, y:0, w:100, h:100 }, cropRatio: 'free',
+            gridW: 32, gridH: 32, canvasShape: 'square', imgAspect: 1, pixels: null, palette: [],
+            sampleOffsetX: 0, sampleOffsetY: 0, 
+            colors: [null, null, null], 
+            activeColorIdx: 0, tool: 'pen', subtool: '1x1', showGrid: true, bgColor: '#ffffff',
+            history: [], historyIdx: -1, expShape: 'square', expGrid: true, expAnalysis: false, wsMode: 'code'
+        };
+
+        const getActiveColor = () => state.colors[state.activeColorIdx];
+
+        const rgb2hex = (r,g,b) => "#" + (1<<24|r<<16|g<<8|b).toString(16).slice(1).toUpperCase();
+        const hex2rgb = h => { const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(h); return r ? {r:parseInt(r[1],16),g:parseInt(r[2],16),b:parseInt(r[3],16)} : null; };
+        const genId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
+        
+        function getContrast(hex) {
+            const r = hex2rgb(hex); if(!r) return '#000000';
+            const yiq = ((r.r * 299) + (r.g * 587) + (r.b * 114)) / 1000;
+            return (yiq >= 128) ? '#000000' : '#FFFFFF';
+        }
+
+        function rgb2lab(r, g, b) {
+            let r_ = r / 255, g_ = g / 255, b_ = b / 255;
+            r_ = r_ > 0.04045 ? Math.pow((r_ + 0.055) / 1.055, 2.4) : r_ / 12.92;
+            g_ = g_ > 0.04045 ? Math.pow((g_ + 0.055) / 1.055, 2.4) : g_ / 12.92;
+            b_ = b_ > 0.04045 ? Math.pow((b_ + 0.055) / 1.055, 2.4) : b_ / 12.92;
+            let x = (r_ * 0.4124 + g_ * 0.3576 + b_ * 0.1805) / 0.95047;
+            let y = (r_ * 0.2126 + g_ * 0.7152 + b_ * 0.0722) / 1.00000;
+            let z = (r_ * 0.0193 + g_ * 0.1192 + b_ * 0.9505) / 1.08883;
+            x = x > 0.008856 ? Math.pow(x, 1/3) : (7.787 * x) + (16 / 116);
+            y = y > 0.008856 ? Math.pow(y, 1/3) : (7.787 * y) + (16 / 116);
+            z = z > 0.008856 ? Math.pow(z, 1/3) : (7.787 * z) + (16 / 116);
+            return [(116 * y) - 16, 500 * (x - y), 200 * (y - z)];
+        }
+
+        function colorDistance(c1, c2) {
+            const lab1 = rgb2lab(c1.r, c1.g, c1.b);
+            const lab2 = rgb2lab(c2.r, c2.g, c2.b);
+            return Math.sqrt(Math.pow(lab1[0] - lab2[0], 2) + Math.pow(lab1[1] - lab2[1], 2) + Math.pow(lab1[2] - lab2[2], 2));
+        }
+
+        function getClosestPaletteColor(hex) {
+            const r = hex2rgb(hex); if(!r) return APP_PALETTE[0];
+            let minDist = Infinity; let closest = APP_PALETTE[0];
+            for (let p of APP_PALETTE) {
+                const pr = hex2rgb(p.hex); const d = colorDistance(r, pr);
+                if (d < minDist) { minDist = d; closest = p; }
+            }
+            return closest;
+        }
+        
+        function getCodes(pixels) {
+            if(!pixels) return [];
+            let codeMap = new Map();
+            pixels.forEach(row => {
+                row.forEach(h => {
+                    if (h) {
+                        const pal = APP_PALETTE.find(p => p.hex.toUpperCase() === h.toUpperCase()) || getClosestPaletteColor(h);
+                        const code = pal.code;
+                        if (!codeMap.has(code)) { codeMap.set(code, { h: pal.hex.toUpperCase(), c: 0, id: pal.code, name: pal.name }); }
+                        codeMap.get(code).c++;
+                    }
+                });
+            });
+            return Array.from(codeMap.values()).sort((a,b) => b.c - a.c);
+        }
+
+        function updateColorCount() {
+            const c = state.colors[state.activeColorIdx]; let count = 0;
+            if(state.pixels && c) {
+                state.pixels.forEach(r => r.forEach(p => { 
+                    if(p && p.toUpperCase() === c.toUpperCase()) count++; 
+                }));
+            }
+            $('active-color-count').innerText = `Used: ${count}px`;
+        }
+
+        function formatDate(ms) {
+            if(!ms) return 'Unknown'; const d = new Date(ms);
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            const min = d.getMinutes().toString().padStart(2, '0'); const ampm = d.getHours() >= 12 ? 'pm' : 'am';
+            const hr = d.getHours() % 12 || 12; return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} ${hr}:${min} ${ampm}`;
+        }
+
+        function showInputModal(title, defaultValue, callback) {
+            $('input-modal-title').innerText = title; $('input-modal-field').value = defaultValue;
+            $('input-modal').classList.remove('hidden'); $('input-modal-field').focus();
+            $('btn-input-save').onclick = () => { $('input-modal').classList.add('hidden'); callback($('input-modal-field').value); };
+            $('btn-input-cancel').onclick = () => $('input-modal').classList.add('hidden');
+        }
+
+        function showConfirmModal(msg, callback) {
+            $('confirm-modal-msg').innerText = msg; $('confirm-modal').classList.remove('hidden');
+            $('btn-confirm-ok').onclick = () => { $('confirm-modal').classList.add('hidden'); callback(); };
+            $('btn-confirm-cancel').onclick = () => $('confirm-modal').classList.add('hidden');
+        }
+        
+        function applyCanvasClip(ctx, w, h, shape) {
+            if (!shape || shape === 'square') return;
+            ctx.beginPath();
+            if (shape === 'circle') {
+                ctx.arc(w / 2, h / 2, Math.min(w, h) / 2, 0, Math.PI * 2);
+            } else if (shape === 'hex') {
+                const cx = w/2, cy = h/2;
+                const r = Math.min(w, h) / 2;
+                for (let i = 0; i < 6; i++) {
+                    const angle = (Math.PI / 3) * i - Math.PI / 2; 
+                    const x = cx + r * Math.cos(angle);
+                    const y = cy + r * Math.sin(angle);
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+            }
+            ctx.clip();
+        }
+
+        function saveStorage() { try { localStorage.setItem('dotlab_proj_v2', JSON.stringify(state.projects)); } catch(e){} }
+        
+        window.addEventListener('click', (e) => { if(!e.target.closest('.proj-menu') && !e.target.closest('.btn-more-project')) { $$('.proj-menu').forEach(m => m.classList.add('hidden')); } });
+        
+        let screens = ['edit']; function nav(id) { $$('.screen').forEach(e => e.classList.remove('active')); $(`screen-${id}`).classList.add('active'); if(screens[screens.length-1] !== id) screens.push(id); }
+        function back() { if(screens.length>1) { screens.pop(); nav(screens.pop()); } } $$('.nav-back').forEach(b => b.onclick = back);
+        
+        // Settings / UI Toggle Logic
+        function toggleUIState(enabled) {
+            const ids = ['btn-more-menu', 'btn-colors', 'btn-action-trigger', 'btn-color-1', 'btn-color-2', 'btn-color-3'];
+            ids.forEach(id => {
+                const el = $(id);
+                if (el) {
+                    if (enabled) el.classList.remove('opacity-50', 'pointer-events-none');
+                    else el.classList.add('opacity-50', 'pointer-events-none');
+                }
+            });
+            
+            $$('.tool-btn').forEach(b => {
+                if (b.id !== 'btn-colors') {
+                    if (enabled) b.classList.remove('opacity-50', 'pointer-events-none');
+                    else b.classList.add('opacity-50', 'pointer-events-none');
+                }
+            });
+        }
+
+        // Welcome and Canvas Toggle Logic
+        function showWelcome() {
+            $('edit-welcome-msg').classList.remove('hidden');
+            $('edit-scroll-content').classList.add('hidden');
+            $('toolbar-draw').classList.add('hidden');
+            $('toolbar-transform').classList.add('hidden');
+            $('active-color-count').innerText = 'Used: 0px';
+            toggleUIState(false);
+        }
+        
+        function hideWelcome() {
+            $('edit-welcome-msg').classList.add('hidden');
+            $('edit-scroll-content').classList.remove('hidden');
+            toggleUIState(true);
+            updateTools(); // Restore the correct toolbar
+        }
+
+        $('btn-open-menu').onclick = () => $('menu-overlay').classList.remove('hidden'); $('btn-close-menu').onclick = () => $('menu-overlay').classList.add('hidden');
+        
+        $('file-upload').onchange = (e) => { if(!e.target.files[0]) return; $('menu-overlay').classList.add('hidden'); const r = new FileReader(); r.onload = ev => { const img = new Image(); img.onload = () => { state.imgSource = img; state.currentId = null; state.canvasShape = 'square'; initCrop(); }; img.src = ev.target.result; }; r.readAsDataURL(e.target.files[0]); };
+
+        function createBlankCanvas(w, h, shape = 'square') {
+            $('menu-overlay').classList.add('hidden');
+            state.currentId = null; state.gridW = w; state.gridH = h; state.canvasShape = shape; 
+            state.sampleOffsetX = 0; state.sampleOffsetY = 0;
+            state.pixels = Array(h).fill().map(() => Array(w).fill(null));
+            state.colors = [null, null, null]; // Keep them empty initially
+            
+            if (shape !== 'square') {
+                const cx = w / 2; const cy = h / 2;
+                for (let y = 0; y < h; y++) {
+                    for (let x = 0; x < w; x++) {
+                        const dx = (x + 0.5 - cx) / (w / 2); const dy = (y + 0.5 - cy) / (h / 2); let inside = false;
+                        if (shape === 'circle') { inside = (dx * dx + dy * dy) <= 1; } 
+                        else if (shape === 'hex') { const dist = Math.max(Math.abs(dx), (Math.abs(dx) + Math.abs(dy) * Math.sqrt(3)) / 2); inside = dist <= 1; }
+                        if (inside) state.pixels[y][x] = '#FFFFFF';
+                    }
+                }
+            } else {
+                for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) state.pixels[y][x] = '#FFFFFF';
+            }
+            state.history = []; state.historyIdx = -1; saveHistory(); 
+            screens = ['edit'];
+            hideWelcome();
+            initEdit();
+        }
+
+        $('btn-custom-cancel').onclick = () => $('custom-canvas-modal').classList.add('hidden');
+        $('btn-custom-create').onclick = () => {
+            let cw = parseInt($('custom-w').value); let ch = parseInt($('custom-h').value);
+            if (isNaN(cw) || cw < 1) cw = 32; if (isNaN(ch) || ch < 1) ch = 32;
+            if (cw > 512) cw = 512; if (ch > 512) ch = 512;
+            $('custom-canvas-modal').classList.add('hidden'); createBlankCanvas(cw, ch, 'square');
+        };
+
+        const presetsList = [8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256];
+        const presetContainer = $('canvas-preset-list');
+        if (presetContainer) {
+            presetsList.forEach(size => {
+                const btn = document.createElement('button');
+                btn.className = "py-3 bg-white border-2 border-[var(--border-color)] rounded-xl shadow-sm text-sm font-bold font-mono text-[var(--text-main)] active:bg-[var(--header-bg)] active:scale-95 transition-all focus:outline-none focus:ring-0";
+                btn.innerText = `${size}×${size}`;
+                btn.onclick = () => createBlankCanvas(size, size, 'square');
+                presetContainer.appendChild(btn);
+            });
+            const customBtn = document.createElement('button');
+            customBtn.className = "py-3 bg-[var(--header-bg)] border-2 border-[var(--cute-dark)] rounded-xl shadow-sm text-sm font-bold text-[var(--cute-dark)] active:bg-pink-100 active:scale-95 transition-all focus:outline-none focus:ring-0";
+            customBtn.innerText = "Custom...";
+            customBtn.onclick = () => { $('menu-overlay').classList.add('hidden'); $('custom-canvas-modal').classList.remove('hidden'); };
+            presetContainer.appendChild(customBtn);
+        }
+
+        // --- CROP & GRID ---
+        let isDraggingCrop = false, dragType = null, startCropX, startCropY, startMouseX, startMouseY;
+        let gridZoom = 1; let initialGridPinchDistance = null; let initialGridZoom = 1;
+
+        function initCrop() { 
+            nav('crop'); $('crop-image').src = state.imgSource.src; state.cropRatio = 'free'; 
+            state.sampleOffsetX = 0; state.sampleOffsetY = 0; 
+            $('slider-offset-x').value = 0; $('val-offset-x').innerText = "0";
+            $('slider-offset-y').value = 0; $('val-offset-y').innerText = "0";
+            updateRatioBtns(); setTimeout(resetCropBox, 50); 
+        }
+        function resetCropBox() { state.cropRect = {x: 10, y: 10, w: 80, h: 80}; applyCropDOM(); }
+        function applyCropDOM() { const cb = $('crop-box'); const co = $('crop-overlay'); cb.style.left = `${state.cropRect.x}%`; cb.style.top = `${state.cropRect.y}%`; cb.style.width = `${state.cropRect.w}%`; cb.style.height = `${state.cropRect.h}%`; const l = state.cropRect.x, t = state.cropRect.y, r = 100 - (state.cropRect.x + state.cropRect.w), b = 100 - (state.cropRect.y + state.cropRect.h); co.style.clipPath = `polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${l}% ${t}%, ${l}% ${100-b}%, ${100-r}% ${100-b}%, ${100-r}% ${t}%, ${l}% ${t}%)`; }
+        function updateRatioBtns() { $$('.aspect-btn').forEach(b => { const a = b.dataset.ratio === state.cropRatio; b.className = `aspect-btn pb-1 font-bold border-b-2 ${a ? 'text-white border-[#FFB6C1]' : 'text-gray-400 border-transparent'}`; }); }
+        $$('.crop-handle').forEach(h => h.onpointerdown = e => { isDraggingCrop=true; dragType=h.dataset.handle; e.preventDefault(); e.stopPropagation(); });
+        
+        window.addEventListener('pointerup', () => { isDraggingCrop = false; if(isD){isD=false; if(state.tool==='pen' || state.tool==='eraser') saveHistory();} });
+        window.addEventListener('pointermove', e => {
+            if(isDraggingCrop) {
+                const rect = $('crop-image').getBoundingClientRect(); let px = ((e.clientX - rect.left)/rect.width)*100; let py = ((e.clientY - rect.top)/rect.height)*100; px = Math.max(0, Math.min(100, px)); py = Math.max(0, Math.min(100, py));
+                if(dragType === 'move') { let dx = ((e.clientX - startMouseX)/rect.width)*100; let dy = ((e.clientY - startMouseY)/rect.height)*100; state.cropRect.x = Math.max(0, Math.min(100 - state.cropRect.w, startCropX + dx)); state.cropRect.y = Math.max(0, Math.min(100 - state.cropRect.h, startCropY + dy)); } 
+                else { let r = state.cropRect.x + state.cropRect.w, b = state.cropRect.y + state.cropRect.h; if(dragType.includes('l')) { let nx = Math.min(px, r-10); state.cropRect.w += state.cropRect.x - nx; state.cropRect.x = nx; } if(dragType.includes('r')) { state.cropRect.w = Math.max(10, px - state.cropRect.x); } if(dragType.includes('t')) { let ny = Math.min(py, b-10); state.cropRect.h += state.cropRect.y - ny; state.cropRect.y = ny; } if(dragType.includes('b')) { state.cropRect.h = Math.max(10, py - state.cropRect.y); } if(state.cropRatio !== 'free') { const tar = parseFloat(state.cropRatio); const imgR = state.imgSource.width / state.imgSource.height; state.cropRect.w = state.cropRect.h * (tar / imgR); if(state.cropRect.x + state.cropRect.w > 100) state.cropRect.w = 100 - state.cropRect.x; } } applyCropDOM();
+            } drawAction(e);
+        });
+        $$('.aspect-btn').forEach(b => b.onclick = e => { state.cropRatio = e.target.dataset.ratio; updateRatioBtns(); resetCropBox(); if(state.cropRatio !== 'free') { const tar = parseFloat(state.cropRatio); const imgR = state.imgSource.width/state.imgSource.height; state.cropRect.w = 80; state.cropRect.h = 80 * (imgR/tar); if(state.cropRect.h > 80) { state.cropRect.h = 80; state.cropRect.w = 80 * (tar/imgR); } state.cropRect.x = (100-state.cropRect.w)/2; state.cropRect.y = (100-state.cropRect.h)/2; applyCropDOM(); } });
+        
+        $('btn-crop-cancel').onclick = () => { screens = ['edit']; nav('edit'); state.imgSource = null; }; 
+        $('btn-crop-reset').onclick = resetCropBox;
+        
+        $('btn-crop-done').onclick = () => {
+            if (!state.imgSource) return;
+            const rect = state.cropRect || { x: 0, y: 0, w: 100, h: 100 };
+            const cvs = document.createElement('canvas'); const ctx = cvs.getContext('2d');
+            const iw = state.imgSource.naturalWidth; const ih = state.imgSource.naturalHeight;
+            const sw = Math.max(1, (rect.w / 100) * iw); const sh = Math.max(1, (rect.h / 100) * ih);
+            const sx = Math.max(0, (rect.x / 100) * iw); const sy = Math.max(0, (rect.y / 100) * ih);
+            cvs.width = sw; cvs.height = sh;
+            try {
+                ctx.drawImage(state.imgSource, sx, sy, sw, sh, 0, 0, sw, sh);
+                state.croppedCanvas = cvs;
+                state.imgAspect = sw / sh;
+                gridZoom = 1;
+                nav('grid'); 
+                updateGridVars();
+                if (typeof drawGridPreview === 'function') drawGridPreview();
+            } catch (err) {
+                console.error("Crop error:", err); alert("Oops! There was an issue cropping. Try adjusting the box slightly. 🥺");
+            }
+        };
+
+        const gridWorkspace = $('grid-workspace');
+        gridWorkspace.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                initialGridPinchDistance = Math.sqrt(dx * dx + dy * dy);
+                initialGridZoom = gridZoom;
+                e.preventDefault();
+            }
+        }, {passive: false});
+
+        gridWorkspace.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2 && initialGridPinchDistance) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                const ratio = distance / initialGridPinchDistance;
+                gridZoom = Math.min(Math.max(0.5, initialGridZoom * ratio), 5);
+                drawGridPreview(); 
+                e.preventDefault();
+            }
+        }, {passive: false});
+
+        gridWorkspace.addEventListener('touchend', (e) => {
+            if (e.touches.length < 2) {
+                initialGridPinchDistance = null;
+            }
+        });
+
+        $('btn-toggle-offset').onclick = () => {
+            $('offset-menu').classList.toggle('hidden');
+            const icon = $('btn-toggle-offset').querySelector('i');
+            if($('offset-menu').classList.contains('hidden')) {
+                icon.setAttribute('data-lucide', 'chevron-down');
+            } else {
+                icon.setAttribute('data-lucide', 'chevron-up');
+            }
+            lucide.createIcons();
+        };
+
+        $('slider-offset-x').oninput = e => {
+            state.sampleOffsetX = parseInt(e.target.value);
+            $('val-offset-x').innerText = state.sampleOffsetX;
+            drawGridPreview();
+        };
+
+        $('slider-offset-y').oninput = e => {
+            state.sampleOffsetY = parseInt(e.target.value);
+            $('val-offset-y').innerText = state.sampleOffsetY;
+            drawGridPreview();
+        };
+
+        function drawGridPreview() { 
+            const cImg = $('grid-image-canvas'), cOver = $('grid-overlay-canvas'); 
+            cImg.width = state.croppedCanvas.width; 
+            cImg.height = state.croppedCanvas.height; 
+            cImg.getContext('2d').drawImage(state.croppedCanvas, 0, 0); 
+            
+            const imgRatio = state.croppedCanvas.width / state.croppedCanvas.height;
+            const maxW = Math.min(window.innerWidth - 32, 500); 
+            const maxH = window.innerHeight * 0.40; 
+            
+            let baseW = maxW;
+            let baseH = baseW / imgRatio; 
+            if (baseH > maxH) { 
+                baseH = maxH; 
+                baseW = baseH * imgRatio; 
+            } 
+            
+            let dw = baseW * gridZoom;
+            let dh = baseH * gridZoom;
+            const dpr = window.devicePixelRatio || 1;
+
+            cImg.style.width=`${dw}px`; cImg.style.height=`${dh}px`; 
+            
+            cOver.width = dw * dpr; cOver.height = dh * dpr; 
+            cOver.style.width=`${dw}px`; cOver.style.height=`${dh}px`; 
+            
+            const ctx = cOver.getContext('2d'); 
+            ctx.scale(dpr, dpr);
+            ctx.clearRect(0,0,dw,dh); 
+            
+            const stepX = dw / state.gridW;
+            const stepY = dh / state.gridH;
+
+            if($('toggle-sampling-grid').checked) { 
+                ctx.translate(0.5, 0.5);
+                ctx.strokeStyle='rgba(255,182,193,0.9)'; 
+                ctx.lineWidth=1.5; 
+                ctx.beginPath(); 
+                
+                for(let x=0; x<=state.gridW; x++) { 
+                    let lx = x * stepX;
+                    if (x === state.gridW) lx = dw - 1; 
+                    ctx.moveTo(lx, 0); ctx.lineTo(lx, dh); 
+                } 
+                for(let y=0; y<=state.gridH; y++) { 
+                    let ly = y * stepY;
+                    if (y === state.gridH) ly = dh - 1; 
+                    ctx.moveTo(0, ly); ctx.lineTo(dw, ly); 
+                } 
+                ctx.stroke(); 
+                ctx.translate(-0.5, -0.5);
+            }
+
+            if($('toggle-sampling-dots').checked) {
+                ctx.fillStyle = '#FF1493'; 
+                ctx.strokeStyle = '#FFFFFF'; 
+                ctx.lineWidth = 1.5; 
+                
+                for(let y=0; y<state.gridH; y++) {
+                    for(let x=0; x<state.gridW; x++) {
+                        const ox = (x + 0.5 + (state.sampleOffsetX || 0)/100) * stepX;
+                        const oy = (y + 0.5 + (state.sampleOffsetY || 0)/100) * stepY;
+                        ctx.beginPath();
+                        ctx.arc(ox, oy, 2, 0, Math.PI*2);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+                }
+            } 
+        }
+
+        function updateGridVars() {
+            state.imgAspect = state.imgAspect || 1; 
+            state.gridH = Math.max(1, Math.round(state.gridW / state.imgAspect));
+            $('val-w').innerText = state.gridW;
+            $('slider-w').value = state.gridW;
+            $('val-h').innerText = state.gridH;
+            $('grid-size-display').innerText = `${state.gridW} × ${state.gridH}`;
+        }
+
+        $('toggle-sampling-grid').onchange = drawGridPreview; 
+        $('toggle-sampling-dots').onchange = drawGridPreview; 
+        
+        $('slider-w').oninput = e => { state.gridW = parseInt(e.target.value); updateGridVars(); drawGridPreview(); }; 
+        $('btn-minus-w').onclick = () => { if(state.gridW>5) { state.gridW--; updateGridVars(); drawGridPreview();} }; 
+        $('btn-plus-w').onclick = () => { if(state.gridW<128) { state.gridW++; updateGridVars(); drawGridPreview();} };
+
+        $('btn-preview').onclick = () => {
+            const cw = state.croppedCanvas.width;
+            const ch = state.croppedCanvas.height;
+            const ctx = state.croppedCanvas.getContext('2d', {willReadFrequently:true});
+            const fullImgData = ctx.getImageData(0, 0, cw, ch).data;
+            
+            state.pixels = [];
+            const cellW = cw / state.gridW;
+            const cellH = ch / state.gridH;
+            
+            for (let y = 0; y < state.gridH; y++) {
+                let row = [];
+                for (let x = 0; x < state.gridW; x++) {
+                    const sampleX = Math.floor((x + 0.5 + (state.sampleOffsetX || 0) / 100) * cellW);
+                    const sampleY = Math.floor((y + 0.5 + (state.sampleOffsetY || 0) / 100) * cellH);
+                    
+                    const px = Math.max(0, Math.min(cw - 1, sampleX));
+                    const py = Math.max(0, Math.min(ch - 1, sampleY));
+                    
+                    const i = (py * cw + px) * 4;
+                    if (fullImgData[i+3] > 128) { 
+                        const r = fullImgData[i]; const g = fullImgData[i+1]; const b = fullImgData[i+2];
+                        const hex = rgb2hex(r, g, b);
+                        const matchedHex = getClosestPaletteColor(hex).hex.toUpperCase();
+                        row.push(matchedHex);
+                    } else {
+                        row.push(null);
+                    }
+                }
+                state.pixels.push(row);
+            }
+
+            // Extract dominant colors
+            const codes = getCodes(state.pixels);
+            state.colors = [null, null, null];
+            for (let i = 0; i < 3 && i < codes.length; i++) {
+                state.colors[i] = codes[i].h;
+            }
+            state.activeColorIdx = 0;
+
+            state.history = []; state.historyIdx = -1; saveHistory();
+            screens = ['edit']; 
+            hideWelcome();
+            initEdit();
+        };
+
+        // --- EDIT ---
+        let edSize = 20;
+        let editZoom = 1;
+
+        function updateEditTransform() {
+            const wrapper = $('canvas-wrapper'); 
+            const innerWrapper = $('canvas-inner-wrapper');
+            const c = $('edit-canvas'); 
+            const g = $('edit-grid-canvas');
+            
+            if (!wrapper || !c || !g || !innerWrapper) return;
+            const scaledW = state.gridW * edSize * editZoom; 
+            const scaledH = state.gridH * edSize * editZoom;
+            
+            wrapper.style.width = `${scaledW + 2}px`; 
+            wrapper.style.height = `${scaledH + 2}px`;
+            
+            innerWrapper.style.width = `${scaledW}px`; 
+            innerWrapper.style.height = `${scaledH}px`;
+            
+            c.style.width = `${scaledW}px`; c.style.height = `${scaledH}px`;
+            g.style.width = `${scaledW}px`; g.style.height = `${scaledH}px`;
+        }
+
+        // Pinch-to-zoom logic
+        let initialPinchDistance = null;
+        let initialZoom = 1;
+
+        const editWorkspace = $('edit-workspace');
+        editWorkspace.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                isD = false; 
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                initialPinchDistance = Math.sqrt(dx * dx + dy * dy);
+                initialZoom = editZoom;
+                e.preventDefault();
+            }
+        }, {passive: false});
+
+        editWorkspace.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2 && initialPinchDistance) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                const ratio = distance / initialPinchDistance;
+                editZoom = Math.min(Math.max(0.1, initialZoom * ratio), 5);
+                updateEditTransform();
+                e.preventDefault();
+            }
+        }, {passive: false});
+
+        editWorkspace.addEventListener('touchend', (e) => {
+            if (e.touches.length < 2) {
+                initialPinchDistance = null;
+            }
+        });
+
+        function initEdit() {
+            nav('edit'); getPalette(); updateColorBtns(); renderEdit();
+            $('toolbar-draw').classList.remove('hidden'); $('toolbar-transform').classList.add('hidden');
+            state.tool = 'pen'; updateTools(); $('action-menu').classList.add('hidden'); updateColorCount();
+            $('btn-edit-undo').style.opacity = state.historyIdx > 0 ? '1' : '0.4';
+            $('btn-edit-redo').style.opacity = state.historyIdx < state.history.length - 1 ? '1' : '0.4';
+            editZoom = 1; updateEditTransform();
+        }
+
+        function getPalette() {
+            let m=new Map(); if(state.pixels) state.pixels.forEach(r=>r.forEach(h=>{if(h) m.set(h,1);}));
+            state.palette=Array.from(m.keys());
+        }
+
+        function updateColorBtns() {
+            [1, 2, 3].forEach(i => {
+                const b = $(`btn-color-${i}`);
+                const currentColor = state.colors[i - 1];
+                
+                if (currentColor) {
+                    b.style.backgroundColor = currentColor;
+                    const matchedPalette = APP_PALETTE.find(pal => pal.hex.toUpperCase() === currentColor.toUpperCase()) || getClosestPaletteColor(currentColor);
+                    b.innerText = matchedPalette ? matchedPalette.code : '';
+                    b.style.color = getContrast(currentColor);
+                    b.style.border = 'none';
+                } else {
+                    b.style.backgroundColor = 'var(--header-bg)';
+                    b.innerText = '+';
+                    b.style.color = 'var(--cute-dark)';
+                }
+                
+                if (i - 1 === state.activeColorIdx && currentColor) { 
+                    b.classList.add('glow-active'); 
+                    b.style.removeProperty('filter'); 
+                } else { 
+                    b.classList.remove('glow-active'); 
+                    b.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))'; 
+                }
+            });
+            updateColorCount();
+        }
+
+        [1, 2, 3].forEach(i => $(`btn-color-${i}`).onclick = () => {
+            state.activeColorIdx = i - 1; 
+            updateColorBtns(); 
+        });
+
+        function renderEdit() { 
+            if(!state.pixels) return;
+            const c=$('edit-canvas'), g=$('edit-grid-canvas'); 
+            const maxW=window.innerWidth-40; 
+            edSize=Math.max(8, Math.floor(maxW/state.gridW)); 
+            c.width=state.gridW; c.height=state.gridH; 
+            
+            const bg = $('checkerboard-bg');
+            const innerWrapper = $('canvas-inner-wrapper');
+            if (state.canvasShape === 'circle') { 
+                bg.style.clipPath = 'circle(50% at 50% 50%)'; 
+                innerWrapper.style.clipPath = 'circle(50% at 50% 50%)';
+            } else if (state.canvasShape === 'hex') { 
+                bg.style.clipPath = 'polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%)'; 
+                innerWrapper.style.clipPath = 'polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%)';
+            } else { 
+                bg.style.clipPath = 'none'; 
+                innerWrapper.style.clipPath = 'none';
+            }
+            drawEdit(); drawEditG(); updateEditTransform(); 
+        }
+
+        function drawEdit() { 
+            if(!state.pixels) return;
+            const c = $('edit-canvas'); const ctx = c.getContext('2d'); const W = state.gridW; const H = state.gridH;
+            const off = document.createElement('canvas'); off.width = W; off.height = H; const octx = off.getContext('2d');
+            const imgD = octx.createImageData(W, H); const bR = state.bgColor !== 'transparent' ? hex2rgb(state.bgColor) : null;
+            
+            for(let y=0; y<H; y++) {
+                for(let x=0; x<W; x++) {
+                    const i=(y*W+x)*4, h=state.pixels[y][x];
+                    if(h) { const r=hex2rgb(h); imgD.data[i]=r.r; imgD.data[i+1]=r.g; imgD.data[i+2]=r.b; imgD.data[i+3]=255; } 
+                    else if (bR) { imgD.data[i]=bR.r; imgD.data[i+1]=bR.g; imgD.data[i+2]=bR.b; imgD.data[i+3]=255; } 
+                    else { imgD.data[i+3]=0; }
+                }
+            }
+            octx.putImageData(imgD, 0, 0);
+            ctx.clearRect(0, 0, W, H); ctx.save(); applyCanvasClip(ctx, W, H, state.canvasShape); ctx.drawImage(off, 0, 0); ctx.restore();
+        }
+
+        function drawEditG() { 
+            const canvas = $('edit-grid-canvas');
+            const W = state.gridW * edSize, H = state.gridH * edSize;
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = W * dpr; canvas.height = H * dpr;
+            
+            const ctx = canvas.getContext('2d'); 
+            ctx.scale(dpr, dpr);
+            ctx.clearRect(0,0,W,H); ctx.save(); applyCanvasClip(ctx, W, H, state.canvasShape);
+            
+            if(state.showGrid) {
+                ctx.translate(0.5, 0.5);
+                ctx.strokeStyle='rgba(255,182,193,0.8)'; 
+                ctx.lineWidth=1.0; ctx.beginPath(); 
+                for(let x=0; x<=state.gridW; x++){ let lx = x * edSize; if (x===state.gridW) lx=W-1; ctx.moveTo(lx,0); ctx.lineTo(lx,H); } 
+                for(let y=0; y<=state.gridH; y++){ let ly = y * edSize; if (y===state.gridH) ly=H-1; ctx.moveTo(0,ly); ctx.lineTo(W,ly); } 
+                ctx.stroke(); 
+                ctx.translate(-0.5, -0.5);
+            }
+
+            if (state.canvasShape !== 'square') {
+                ctx.strokeStyle = 'var(--cute-dark)'; ctx.lineWidth = 4; ctx.beginPath();
+                if (state.canvasShape === 'circle') { ctx.arc(W / 2, H / 2, Math.min(W, H) / 2, 0, Math.PI * 2); } 
+                else if (state.canvasShape === 'hex') {
+                    const cx = W/2, cy = H/2, r = Math.min(W, H) / 2;
+                    for (let i = 0; i < 6; i++) {
+                        const angle = (Math.PI / 3) * i - Math.PI / 2;
+                        const x = cx + r * Math.cos(angle); const y = cy + r * Math.sin(angle);
+                        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                    }
+                    ctx.closePath();
+                }
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function updateTools() { 
+            $$('.tool-btn').forEach(b => { 
+                b.classList.remove('active'); 
+                if(b.dataset.tool === state.tool) b.classList.add('active'); 
+            }); 
+            if ($('edit-welcome-msg').classList.contains('hidden') === false) {
+                $('toolbar-draw').classList.add('hidden');
+                $('toolbar-transform').classList.add('hidden');
+                return;
+            }
+            if(state.tool === 'transform') { 
+                $('toolbar-draw').classList.add('hidden'); $('toolbar-transform').classList.remove('hidden'); 
+            } else { 
+                $('toolbar-draw').classList.remove('hidden'); $('toolbar-transform').classList.add('hidden'); 
+            } 
+        }
+
+        $$('.tool-btn').forEach(b => b.onclick = () => { 
+            if(b.id==='btn-colors') { 
+                $('color-picker-popup').classList.toggle('hidden'); 
+                if (!$('color-picker-popup').classList.contains('hidden')) renderPicker(); 
+                return; 
+            } 
+            state.tool = b.dataset.tool; updateTools(); 
+        }); 
+
+        $$('.subtool-btn').forEach(b => b.onclick = () => { $$('.subtool-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); state.subtool=b.dataset.sub; });
+        $('btn-tf-cancel').onclick = () => { state.tool='pen'; updateTools(); }; $('btn-tf-fliph').onclick = () => { if(state.pixels) { state.pixels.forEach(r=>r.reverse()); drawEdit(); saveHistory(); } }; $('btn-tf-flipv').onclick = () => { if(state.pixels) { state.pixels.reverse(); drawEdit(); saveHistory(); } };
+        $('btn-more-menu').onclick = () => $('more-menu').classList.toggle('hidden'); 
+        
+        $('toggle-transparent').onchange = e => { state.bgColor = e.target.checked ? 'transparent' : '#ffffff'; drawEdit(); }; 
+        $('toggle-grid').onchange = e => { state.showGrid = e.target.checked; drawEditG(); }; 
+        $('btn-clear-canvas').onclick = () => { if(state.pixels) { state.pixels=state.pixels.map(r=>r.map(()=>null)); drawEdit(); saveHistory(); updateColorCount(); } $('more-menu').classList.add('hidden'); };
+        
+        // Coquette delete canvas confirmation completely resetting the app state
+        $('btn-delete-canvas').onclick = () => {
+            $('more-menu').classList.add('hidden');
+            showConfirmModal("Are you absolutely sure you want to throw away this cute canvas? It'll be gone forever! 💔", () => {
+                state.pixels = null; 
+                state.imgSource = null; 
+                state.currentId = null; 
+                state.bgColor = '#ffffff';
+                state.showGrid = true;
+                state.canvasShape = 'square';
+                state.history = []; 
+                state.historyIdx = -1;
+                state.colors = [null, null, null];
+                state.activeColorIdx = 0;
+                state.tool = 'pen';
+                state.subtool = '1x1';
+
+                $('toggle-transparent').checked = false;
+                $('toggle-grid').checked = true;
+                
+                editZoom = 1;
+                updateEditTransform();
+                showWelcome();
+            });
+        };
+        
+        $('btn-action-trigger').onclick = () => { if(state.pixels) { $('action-menu').classList.toggle('hidden'); } }; $('btn-go-export').onclick = () => { $('action-menu').classList.add('hidden'); nav('export'); renderExp(); }; $('btn-go-share').onclick = () => { $('btn-go-export').click(); }; const initWsNav = () => { $('action-menu').classList.add('hidden'); initWorkstation(); }; $('btn-go-workstation').onclick = initWsNav; $('btn-go-ws-icon').onclick = initWsNav;
+
+        function renderPicker() {
+            const w = $('palette-swatches'); w.innerHTML = ''; 
+            APP_PALETTE.forEach(pal => {
+                const d = document.createElement('div'); 
+                d.className = 'heart-btn w-9 h-9 sm:w-10 sm:h-10 cursor-pointer flex items-center justify-center font-bold text-[10px] pt-1 text-center transition-transform'; 
+                d.style.backgroundColor = pal.hex;
+                d.style.color = getContrast(pal.hex);
+                d.innerText = pal.code; 
+
+                if (state.colors[state.activeColorIdx] === pal.hex.toUpperCase()) {
+                    d.classList.add('glow-active');
+                    d.style.removeProperty('filter');
+                } else {
+                    d.classList.remove('glow-active');
+                    d.style.filter = 'drop-shadow(0 2px 3px rgba(0,0,0,0.1))';
+                }
+
+                d.onclick = () => { 
+                    document.querySelectorAll('#palette-swatches div').forEach(el => {
+                        el.classList.remove('glow-active');
+                        el.style.filter = 'drop-shadow(0 2px 3px rgba(0,0,0,0.1))';
+                    });
+                    d.classList.add('glow-active');
+                    d.style.removeProperty('filter');
+                    
+                    const hex = pal.hex.toUpperCase();
+                    
+                    if (state.activeColorIdx === 0) {
+                        if (state.colors[0] !== hex) {
+                            state.colors.unshift(hex);
+                            state.colors.pop();
+                        }
+                    } else {
+                        state.colors[state.activeColorIdx] = hex; 
+                    }
+                    
+                    updateColorBtns(); 
+                    $('color-picker-popup').classList.add('hidden'); 
+                }; 
+                w.appendChild(d);
+            });
+        }
+
+        let isD = false; const eC=$('edit-canvas'); function getMPos(e) { const r=eC.getBoundingClientRect(), sX=eC.width/r.width, sY=eC.height/r.height; let cx=e.clientX, cy=e.clientY; if(e.touches){cx=e.touches[0].clientX; cy=e.touches[0].clientY;} return {x:Math.floor((cx-r.left)*sX), y:Math.floor((cy-r.top)*sY)}; }
+        function drawAction(e) {
+            if(!isD && e.type!=='pointerdown') return;
+            if(!state.pixels) return;
+            const p=getMPos(e); if(p.x<0||p.x>=state.gridW||p.y<0||p.y>=state.gridH) return;
+            
+            if (state.canvasShape !== 'square') {
+                const cx = state.gridW / 2, cy = state.gridH / 2;
+                const dx = (p.x + 0.5 - cx) / (state.gridW / 2); const dy = (p.y + 0.5 - cy) / (state.gridH / 2);
+                let inside = false;
+                if (state.canvasShape === 'circle') { inside = (dx * dx + dy * dy) <= 1; } 
+                else if (state.canvasShape === 'hex') {
+                    const dist = Math.max(Math.abs(dx), (Math.abs(dx) + Math.abs(dy) * Math.sqrt(3)) / 2);
+                    inside = dist <= 1;
+                }
+                if (!inside) return;
+            }
+
+            if(state.tool==='eyedropper') { 
+                if(state.pixels[p.y][p.x]) { 
+                    const hex = state.pixels[p.y][p.x].toUpperCase();
+                    if (state.colors[0] !== hex) {
+                        state.colors.unshift(hex);
+                        state.colors.pop();
+                    }
+                    state.activeColorIdx = 0;
+                    updateColorBtns(); 
+                    state.tool='pen'; 
+                    updateTools(); 
+                } 
+                return; 
+            }
+            if(state.tool!=='pen' && state.tool!=='eraser') return;
+            const c = state.tool==='eraser' ? null : getActiveColor(); let mod=false;
+            
+            if (state.tool === 'pen' && !c) return;
+            
+            if (state.subtool === 'bucket') {
+                const target = state.pixels[p.y][p.x]; const replacement = c;
+                if (target !== replacement) {
+                    state.pixels.forEach((row, y) => { row.forEach((value, x) => { if (value === target) { state.pixels[y][x] = replacement; mod = true; } }); });
+                }
+            } else { 
+                let s=1; if(state.subtool==='2x2') s=2; if(state.subtool==='3x3') s=3; 
+                for(let dy=0;dy<s;dy++) for(let dx=0;dx<s;dx++) { const nx=p.x+dx, ny=p.y+dy; if(nx<state.gridW && ny<state.gridH && state.pixels[ny][nx]!==c) { state.pixels[ny][nx]=c; mod=true; } } 
+            }
+            if(mod) drawEdit();
+        }
+        eC.onpointerdown=e=>{ e.preventDefault(); $('more-menu').classList.add('hidden'); $('color-picker-popup').classList.add('hidden'); $('action-menu').classList.add('hidden'); isD=true; drawAction(e); };
+
+        function saveHistory() { if(state.historyIdx<state.history.length-1) state.history=state.history.slice(0,state.historyIdx+1); state.history.push(state.pixels.map(r=>[...r])); state.historyIdx++; if(state.history.length>30){state.history.shift();state.historyIdx--;} $('btn-edit-undo').style.opacity=state.historyIdx>0?'1':'0.4'; $('btn-edit-redo').style.opacity=state.historyIdx<state.history.length-1?'1':'0.4'; updateColorCount(); }
+        $('btn-edit-undo').onclick = () => { if(state.historyIdx>0){ state.historyIdx--; state.pixels=state.history[state.historyIdx].map(r=>[...r]); drawEdit(); updateColorCount(); $('btn-edit-undo').style.opacity=state.historyIdx>0?'1':'0.4'; $('btn-edit-redo').style.opacity='1';} }; 
+        $('btn-edit-redo').onclick = () => { if(state.historyIdx<state.history.length-1){ state.historyIdx++; state.pixels=state.history[state.historyIdx].map(r=>[...r]); drawEdit(); updateColorCount(); $('btn-edit-redo').style.opacity=state.historyIdx<state.history.length-1?'1':'0.4'; $('btn-edit-undo').style.opacity='1';} };
+
+        // --- WORK STATION ---
+        let wsScale = 1.0; let wsGridBold = 5;
+
+        $('ws-grid-minus').onclick = () => { wsGridBold = Math.max(1, wsGridBold - 1); $('ws-grid-display').innerHTML = `${wsGridBold}<span class="text-[10px] ml-1">px</span>`; initWorkstation(); };
+        $('ws-grid-plus').onclick = () => { wsGridBold = Math.min(10, wsGridBold + 1); $('ws-grid-display').innerHTML = `${wsGridBold}<span class="text-[10px] ml-1">px</span>`; initWorkstation(); };
+
+        function updateWsTransform() {
+            const wrapper = $('ws-scroll-content'); const c = $('ws-canvas');
+            if (!wrapper || !c) return;
+            const cS = 24; const pad = 40;
+            const baseLogicalW = state.gridW * cS + pad * 2; const baseLogicalH = state.gridH * cS + pad * 2;
+            const scaledW = baseLogicalW * wsScale; const scaledH = baseLogicalH * wsScale;
+            wrapper.style.width = `${scaledW}px`; wrapper.style.height = `${scaledH}px`;
+            c.style.width = `${scaledW}px`; c.style.height = `${scaledH}px`; c.style.maxWidth = 'none';
+            if ($('ws-zoom-display')) { $('ws-zoom-display').innerHTML = `${wsScale.toFixed(1)}<span class="text-[10px] ml-1">x</span>`; }
+        }
+
+        $('ws-zoom-minus').onclick = () => { wsScale -= 0.25; if (wsScale < 0.1) wsScale = 0.1; updateWsTransform(); };
+        $('ws-zoom-plus').onclick = () => { wsScale += 0.25; if (wsScale > 5) wsScale = 5; updateWsTransform(); };
+
+        $('ws-mode-code').onclick = () => { state.wsMode = 'code'; $('ws-mode-code').classList.replace('text-[var(--text-main)]', 'text-white'); $('ws-mode-code').classList.add('bg-[var(--cute-dark)]', 'shadow-md'); $('ws-mode-color').classList.remove('bg-[var(--cute-dark)]', 'shadow-md'); $('ws-mode-color').classList.replace('text-white', 'text-[var(--text-main)]'); initWorkstation(); };
+        $('ws-mode-color').onclick = () => { state.wsMode = 'color'; $('ws-mode-color').classList.replace('text-[var(--text-main)]', 'text-white'); $('ws-mode-color').classList.add('bg-[var(--cute-dark)]', 'shadow-md'); $('ws-mode-code').classList.remove('bg-[var(--cute-dark)]', 'shadow-md'); $('ws-mode-code').classList.replace('text-white', 'text-[var(--text-main)]'); initWorkstation(); };
+
+       function initWorkstation() {
+            if(screens[screens.length-1] !== 'workstation') nav('workstation');
+            if(!state.pixels) return;
+            const cvs = $('ws-canvas'); const ctx = cvs.getContext('2d'); const codes = getCodes(state.pixels); 
+            const cS = 24; const pad = 40; const dpr = window.devicePixelRatio || 1;
+            const logicalW = state.gridW * cS + pad * 2; const logicalH = state.gridH * cS + pad * 2;
+            
+            cvs.width = logicalW * dpr; cvs.height = logicalH * dpr;
+            ctx.scale(dpr, dpr); ctx.imageSmoothingEnabled = false; 
+            
+            ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, logicalW, logicalH); ctx.translate(pad, pad);
+            
+            if(state.wsMode === 'code') {
+                ctx.fillStyle='#D87093'; ctx.font=`bold 12px 'Nunito', sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+                for(let x=0; x<state.gridW; x++) ctx.fillText(x+1, x*cS+cS/2, -15);
+                ctx.textAlign='right'; 
+                for(let y=0; y<state.gridH; y++) ctx.fillText(y+1, -15, y*cS+cS/2);
+            }
+
+            ctx.save(); applyCanvasClip(ctx, state.gridW * cS, state.gridH * cS, state.canvasShape);
+
+            // 1. Draw pixels first
+            for(let y=0; y<state.gridH; y++) {
+                for(let x=0; x<state.gridW; x++) {
+                    const px=x*cS, py=y*cS, h=state.pixels[y][x];
+                    if(h) {
+                        ctx.fillStyle = h; ctx.fillRect(px,py,cS,cS);
+                        if(state.wsMode === 'code') {
+                            const matchedPal = APP_PALETTE.find(p => p.hex.toUpperCase() === h.toUpperCase()) || getClosestPaletteColor(h);
+                            ctx.fillStyle = getContrast(h); ctx.textAlign='center'; ctx.font=`bold 11px 'Nunito', sans-serif`; ctx.fillText(matchedPal.code, px+cS/2, py+cS/2);
+                        }
+                    }
+                }
+            }
+
+            // 2. Draw standard continuous thin grid OVER pixels
+            ctx.save();
+            ctx.translate(0.5, 0.5);
+            ctx.strokeStyle='rgba(255,182,193,0.8)';
+            ctx.lineWidth=1.0;
+            ctx.beginPath();
+            for(let x=0; x<=state.gridW; x++) { let lx=x*cS; if(x===state.gridW) lx-=1; ctx.moveTo(lx,0); ctx.lineTo(lx,state.gridH*cS); }
+            for(let y=0; y<=state.gridH; y++) { let ly=y*cS; if(y===state.gridH) ly-=1; ctx.moveTo(0,ly); ctx.lineTo(state.gridW*cS,ly); }
+            ctx.stroke();
+            ctx.restore();
+            
+            // 3. Draw thicker grid lines edge-to-edge OVER the thin grid
+            ctx.save();
+            ctx.translate(0.5, 0.5);
+            ctx.beginPath();
+            for(let y=0; y<=state.gridH; y++) {
+                if(y===0 || y%wsGridBold===0 || y===state.gridH) {
+                    let ly = y*cS; if(y===state.gridH) ly-=1;
+                    ctx.moveTo(0, ly); ctx.lineTo(state.gridW*cS, ly);
+                }
+            }
+            for(let x=0; x<=state.gridW; x++) {
+                if(x===0 || x%wsGridBold===0 || x===state.gridW) {
+                    let lx = x*cS; if(x===state.gridW) lx-=1;
+                    ctx.moveTo(lx, 0); ctx.lineTo(lx, state.gridH*cS);
+                }
+            }
+            ctx.strokeStyle='#FF9EBB'; ctx.lineWidth=3; ctx.stroke();
+            ctx.restore();
+
+            ctx.restore();
+
+            if (state.canvasShape !== 'square') {
+                ctx.strokeStyle = '#FF9EBB'; ctx.lineWidth = 3; ctx.beginPath();
+                const W = state.gridW * cS, H = state.gridH * cS;
+                if (state.canvasShape === 'circle') { ctx.arc(W / 2, H / 2, Math.min(W, H) / 2, 0, Math.PI * 2); } 
+                else if (state.canvasShape === 'hex') {
+                    const cx = W/2, cy = H/2, r = Math.min(W, H) / 2;
+                    for (let i = 0; i < 6; i++) {
+                        const angle = (Math.PI / 3) * i - Math.PI / 2;
+                        const x = cx + r * Math.cos(angle); const y = cy + r * Math.sin(angle);
+                        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                    }
+                    ctx.closePath();
+                }
+                ctx.stroke();
+            }
+
+            const leg = $('ws-legend'); leg.innerHTML = '';
+            leg.className = "flex flex-row overflow-x-auto w-full gap-4 px-6 pb-6 pt-4 snap-x items-center scroll-smooth"; 
+            
+            codes.forEach(c => {
+                const d = document.createElement('div');
+                d.className = 'flex items-center justify-center gap-3 bg-[var(--bg-color)] p-3 border border-[var(--border-color)] rounded-full shadow-sm shrink-0 snap-center min-w-[140px]';
+                d.innerHTML = `
+                    <div class="heart-btn w-10 h-10 shadow-sm flex items-center justify-center font-bold text-xs pt-1 shrink-0 text-center" 
+                        style="background-color: ${c.h}; color: ${getContrast(c.h)}; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.1));">
+                        ${c.id}
+                    </div>
+                    <div class="font-mono text-base font-bold text-[var(--cute-dark)] whitespace-nowrap">
+                        ${c.c} <span class="text-xs font-bold text-pink-300">px</span>
+                    </div>
+                `;
+                leg.appendChild(d);
+            });
+            updateWsTransform();
+        }
+
+        // --- EXPORT ---
+        let expScale = 20;
+        $$('#shape-toggles button').forEach(b => b.onclick = e => { $$('#shape-toggles button').forEach(x=>x.classList.remove('bg-white', 'shadow-sm')); e.currentTarget.classList.add('bg-white', 'shadow-sm'); state.expShape = e.currentTarget.dataset.shape; renderExp(); });
+        $('exp-grid').onchange = e => { state.expGrid = e.target.checked; renderExp(); }; $('exp-analysis').onchange = e => { state.expAnalysis = e.target.checked; renderExp(); }; $('exp-watermark').onchange = e => { $('watermark-text').classList.toggle('hidden'); renderExp(); }; $('watermark-text').oninput = renderExp;
+
+        function renderExp() {
+            if(!state.pixels) return;
+            const cvs = $('export-preview-canvas'), ctx = cvs.getContext('2d');
+            const cS = expScale, pad = 30; const codes = getCodes(state.pixels); const dpr = window.devicePixelRatio || 1;
+            const gridW = state.gridW * cS; const gridH = state.gridH * cS;
+            let footerH = 0;
+            if (state.expAnalysis) footerH = Math.ceil(codes.length / 3) * 60 + 40;
+            if ($('exp-watermark').checked) footerH += 40;
+
+            const totalW = gridW + (pad * 2); const totalH = gridH + (pad * 2) + footerH;
+            cvs.width = Math.floor(totalW * dpr); cvs.height = Math.floor(totalH * dpr);
+            cvs.style.width = totalW + 'px'; cvs.style.height = totalH + 'px';
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = '#FFF0F5'; ctx.fillRect(0, 0, totalW, totalH);
+
+            ctx.save(); ctx.translate(pad, pad);
+            ctx.save(); applyCanvasClip(ctx, gridW, gridH, state.canvasShape);
+
+            // 1. Draw pixels first
+            for (let y = 0; y < state.gridH; y++) {
+                for (let x = 0; x < state.gridW; x++) {
+                    let h = state.pixels[y][x], px = x * cS, py = y * cS;
+                    if (!state.expGrid && state.expAnalysis && !h) { 
+                        ctx.strokeStyle = 'rgba(255,182,193,0.8)'; 
+                        ctx.lineWidth = 1.0; 
+                        ctx.strokeRect(px + 0.5, py + 0.5, cS, cS); 
+                    }
+                    if (h) {
+                        ctx.strokeStyle = h; ctx.fillStyle = h;
+                        if (state.expShape === 'square') { ctx.fillRect(px, py, cS, cS); } 
+                        else if (state.expShape === 'circle') {
+                            ctx.beginPath(); ctx.lineWidth = cS * 0.25; const r = (cS / 2) - (ctx.lineWidth / 2) - 1; 
+                            ctx.arc(px + cS/2, py + cS/2, Math.max(1, r), 0, Math.PI * 2); ctx.stroke(); 
+                        } 
+                        else if (state.expShape === 'cross') {
+                            ctx.lineWidth = cS * 0.22; ctx.lineCap = 'round'; const inset = cS * 0.15; 
+                            ctx.beginPath(); ctx.moveTo(px + inset, py + inset); ctx.lineTo(px + cS - inset, py + cS - inset);
+                            ctx.moveTo(px + cS - inset, py + inset); ctx.lineTo(px + inset, py + cS - inset); ctx.stroke();
+                        }
+
+                        if (state.expAnalysis) {
+                            const pal = APP_PALETTE.find(p => p.hex.toUpperCase() === h.toUpperCase()) || getClosestPaletteColor(h);
+                            if (pal && pal.code) {
+                                ctx.fillStyle = getContrast(h); const fontSize = Math.max(8, Math.floor(cS * 0.45));
+                                ctx.font = `bold ${fontSize}px 'Nunito', sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(pal.code, px + cS/2, py + cS/2);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 2. Draw standard continuous thin grid OVER pixels
+            if (state.expGrid) {
+                ctx.save();
+                ctx.translate(0.5, 0.5);
+                ctx.strokeStyle='rgba(255,182,193,0.8)';
+                ctx.lineWidth=1.0;
+                ctx.beginPath();
+                for(let x=0; x<=state.gridW; x++) { let lx=x*cS; if(x===state.gridW) lx=gridW-1; ctx.moveTo(lx,0); ctx.lineTo(lx,gridH); }
+                for(let y=0; y<=state.gridH; y++) { let ly=y*cS; if(y===state.gridH) ly=gridH-1; ctx.moveTo(0,ly); ctx.lineTo(gridW,ly); }
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            ctx.restore();
+
+            if (state.canvasShape !== 'square') {
+                ctx.strokeStyle = '#FF9EBB'; ctx.lineWidth = 2; ctx.beginPath();
+                if (state.canvasShape === 'circle') { ctx.arc(gridW / 2, gridH / 2, Math.min(gridW, gridH) / 2, 0, Math.PI * 2); } 
+                else if (state.canvasShape === 'hex') {
+                    const cx = gridW/2, cy = gridH/2, r = Math.min(gridW, gridH) / 2;
+                    for (let i = 0; i < 6; i++) {
+                        const angle = (Math.PI / 3) * i - Math.PI / 2;
+                        const x = cx + r * Math.cos(angle); const y = cy + r * Math.sin(angle);
+                        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                    }
+                    ctx.closePath();
+                }
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            if (state.expAnalysis) {
+                let cy = gridH + pad + 30; let cx = pad;
+                codes.forEach(c => {
+                    if (cx > totalW - 120) { cx = pad; cy += 50; }
+                    ctx.fillStyle = c.h; ctx.beginPath(); ctx.arc(cx + 12, cy + 12, 11, 0, Math.PI * 2); ctx.fill();
+                    ctx.strokeStyle = 'rgba(255,182,193,0.5)'; ctx.lineWidth = 2; ctx.stroke();
+                    ctx.fillStyle = '#7A4B56'; ctx.font = `bold 12px 'Nunito', sans-serif`; ctx.textAlign = 'left';
+                    ctx.fillText(`${c.id}`, cx + 32, cy + 8);
+                    ctx.fillStyle = '#D87093'; ctx.font = `bold 11px 'Nunito', sans-serif`;
+                    ctx.fillText(`${c.c} px`, cx + 32, cy + 22);
+                    cx += 120;
+                });
+            }
+
+            if ($('exp-watermark').checked && $('watermark-text').value.trim()) {
+                ctx.fillStyle = '#D87093'; ctx.font = `bold 14px 'Fredoka', sans-serif`;
+                ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+                ctx.fillText($('watermark-text').value.trim(), totalW - 14, totalH - 12);
+            }
+        };
+
+        $('btn-export-download').onclick = () => {
+            renderExp(); const canvas = $('export-preview-canvas');
+            canvas.toBlob((blob) => {
+                if(!blob) { alert("Unable to generate image. Try again. 🥺"); return; }
+                const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.style.display = 'none'; a.href = url;
+                let filename = state.currentId ? (state.projects.find(x => x.id === state.currentId)?.name || 'PixelStudio') : 'PixelStudio';
+                filename = filename.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                a.download = `cute_${filename}_export.png`; document.body.appendChild(a); a.click();
+                setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
+            }, 'image/png');
+        };
+
+        window.onload = () => {
+            if (window.lucide) lucide.createIcons();
+            
+            nav('edit');
+            showWelcome();
+            
+            const splash = $('splash-screen');
+            if (splash) {
+                setTimeout(() => { splash.style.transition = 'opacity 0.5s ease'; splash.style.opacity = '0'; setTimeout(() => splash.style.display = 'none', 500); }, 1000);
+            }
+        };
+    </script>
+</body>
+</html>
